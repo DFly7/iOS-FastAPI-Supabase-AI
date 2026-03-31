@@ -65,6 +65,25 @@ jobs:
       - name: Generate Xcode project
         run: tuist generate --no-open
 
+      # ── Simulator ──────────────────────────────────────────────────────────
+      # The macos-15 runner ships iOS runtime files but no pre-created devices.
+      # Dynamically create an iPhone 16 device from the latest available iOS runtime
+      # so xcodebuild can resolve the destination specifier by name.
+      - name: Create iPhone 16 Simulator
+        working-directory: ${{ github.workspace }}
+        run: |
+          RUNTIME=$(xcrun simctl list runtimes --json | python3 -c "
+          import sys, json
+          rts = json.load(sys.stdin)['runtimes']
+          ios = [r for r in rts if 'iOS' in r['name'] and r.get('isAvailable', False)]
+          ios.sort(key=lambda r: r['version'], reverse=True)
+          print(ios[0]['identifier'])
+          ")
+          echo "Using runtime: $RUNTIME"
+          xcrun simctl create "iPhone 16" \
+            "com.apple.CoreSimulator.SimDeviceType.iPhone-16" \
+            "$RUNTIME"
+
       # ── Build ──────────────────────────────────────────────────────────────
       - name: Install xcpretty
         run: gem install xcpretty --no-document
