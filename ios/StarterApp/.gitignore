@@ -30,10 +30,12 @@ DerivedData/
 timeline.xctimeline
 playground.xcworkspace/xcuserdata/
 
-# Tuist — .xcodeproj is generated on-the-fly, never commit it
+# Tuist — generated files, never commit them
 # First-time setup: tuist install && tuist generate
 # After pulling changes that modify Project.swift or Tuist/Package.swift: re-run both commands
 StarterApp.xcodeproj/
+StarterApp.xcworkspace/
+Derived/
 
 # Tuist build cache and SPM dependency build artifacts (keep Tuist/Package.resolved committed)
 .tuist-build/

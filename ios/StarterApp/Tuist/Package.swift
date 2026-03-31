@@ -9,8 +9,14 @@ import PackageDescription
 
     let packageSettings = PackageSettings(
         productTypes: [
-            "Supabase": .framework,
-            "PostHog": .framework,
+            // Use staticFramework (not framework) so that resource bundles from
+            // transitive static dependencies (swift-crypto_Crypto.bundle,
+            // PLCrashReporter_CrashReporter.bundle) are placed at the build
+            // products root, where the Tuist-generated CpResource phase looks
+            // for them. With .framework those bundles end up embedded inside the
+            // dynamic framework and the copy phase fails with "No such file".
+            "Supabase": .staticFramework,
+            "PostHog": .staticFramework,
         ]
     )
 #endif
