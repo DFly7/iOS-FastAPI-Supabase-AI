@@ -5,7 +5,6 @@
 import PackageDescription
 
 #if TUIST
-    import ProjectDescriptionHelpers
     import ProjectDescription
 
     let packageSettings = PackageSettings(

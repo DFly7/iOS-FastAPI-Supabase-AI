@@ -41,12 +41,13 @@ jobs:
         run: supabase start
 
       - name: Export local Supabase credentials to GITHUB_ENV
-        # `supabase status -o env` writes lines like:
-        #   API_URL=http://127.0.0.1:54321
-        #   ANON_KEY=eyJ...
-        #   SERVICE_ROLE_KEY=eyJ...
-        # Appending to $GITHUB_ENV makes them available as env vars in later steps.
-        run: supabase status -o env >> "$GITHUB_ENV"
+        # `supabase status -o env` writes shell-quoted lines like:
+        #   API_URL="http://127.0.0.1:54321"
+        #   ANON_KEY="eyJ..."
+        #   SERVICE_ROLE_KEY="eyJ..."
+        # sed strips the surrounding quotes so GITHUB_ENV receives bare values,
+        # preventing pydantic from seeing literal '"' chars inside the URL/key strings.
+        run: supabase status -o env | sed 's/="\(.*\)"/=\1/' >> "$GITHUB_ENV"
 
       # ── Python / FastAPI ────────────────────────────────────────────────────
       - uses: astral-sh/setup-uv@v5
