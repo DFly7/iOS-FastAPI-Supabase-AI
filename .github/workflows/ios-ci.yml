@@ -66,37 +66,38 @@ jobs:
         run: tuist generate --no-open
 
       # ── Simulator ──────────────────────────────────────────────────────────
-      # The macos-15 runner ships iOS runtime files but no pre-created devices.
-      # Dynamically create an iPhone 16 device from the latest available iOS runtime
-      # so xcodebuild can resolve the destination specifier by name.
-      - name: Create iPhone 16 Simulator
+      # The macos-15 runner ships multiple iPhone 16 simulators across iOS versions.
+      # Selecting by name + OS=latest is ambiguous when more than one device shares
+      # the highest OS version. Resolve to a single UDID instead and pass it as `id=`
+      # so xcodebuild always gets an unambiguous match regardless of runner image updates.
+      - name: Select iPhone 16 Simulator UDID
         working-directory: ${{ github.workspace }}
         run: |
-          RUNTIME=$(xcrun simctl list runtimes --json | python3 -c "
+          UDID=$(xcrun simctl list devices available --json | python3 -c "
           import sys, json
-          rts = json.load(sys.stdin)['runtimes']
-          ios = [r for r in rts if 'iOS' in r['name'] and r.get('isAvailable', False)]
-          ios.sort(key=lambda r: r['version'], reverse=True)
-          print(ios[0]['identifier'])
+          data = json.load(sys.stdin)['devices']
+          candidates = []
+          for runtime, devices in data.items():
+              for d in devices:
+                  if d['name'] == 'iPhone 16' and d.get('isAvailable', False):
+                      candidates.append((runtime, d['udid']))
+          candidates.sort(key=lambda x: x[0], reverse=True)
+          print(candidates[0][1])
           ")
-          echo "Using runtime: $RUNTIME"
-          xcrun simctl create "iPhone 16" \
-            "com.apple.CoreSimulator.SimDeviceType.iPhone-16" \
-            "$RUNTIME"
+          echo "SIMULATOR_UDID=$UDID" >> "$GITHUB_ENV"
+          echo "Selected simulator UDID: $UDID"
 
       # ── Build ──────────────────────────────────────────────────────────────
       - name: Install xcpretty
         run: gem install xcpretty --no-document
 
-      # Builds for Simulator only; no signing required.
-      # Adjust OS= if the deployment target in Project.swift changes.
       - name: Build for testing
         run: |
           set -o pipefail
           xcodebuild build-for-testing \
             -project StarterApp.xcodeproj \
             -scheme StarterApp \
-            -destination "platform=iOS Simulator,name=iPhone 16,OS=latest" \
+            -destination "platform=iOS Simulator,id=$SIMULATOR_UDID" \
             CODE_SIGNING_ALLOWED=NO \
             | xcpretty
 
@@ -107,7 +108,7 @@ jobs:
           xcodebuild test-without-building \
             -project StarterApp.xcodeproj \
             -scheme StarterApp \
-            -destination "platform=iOS Simulator,name=iPhone 16,OS=latest" \
+            -destination "platform=iOS Simulator,id=$SIMULATOR_UDID" \
             -only-testing:StarterAppTests \
             CODE_SIGNING_ALLOWED=NO \
             | xcpretty
