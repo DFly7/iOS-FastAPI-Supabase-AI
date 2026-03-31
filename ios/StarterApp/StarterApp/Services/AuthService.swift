@@ -112,7 +112,7 @@ final class AuthService: ObservableObject {
             if let email = session.user.email {
                 props["email"] = email
             }
-            PostHogSDK.shared.identify(distinctId: session.user.id.uuidString, userProperties: props)
+            PostHogSDK.shared.identify(session.user.id.uuidString, userProperties: props)
         }
     }
 
