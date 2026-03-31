@@ -1,0 +1,123 @@
+import ProjectDescription
+
+let project = Project(
+    name: "StarterApp",
+    settings: .settings(
+        base: [
+            // Fallback: no-team builds still compile for Simulator
+            "CODE_SIGNING_ALLOWED": "NO",
+        ],
+        configurations: [
+            .debug(name: "Debug", xcconfig: "Config-Debug.xcconfig"),
+            .release(name: "Release", xcconfig: "Config-Release.xcconfig"),
+        ]
+    ),
+    targets: [
+        .target(
+            name: "StarterApp",
+            destinations: .iOS,
+            product: .app,
+            // Resolved at build time from Config-Debug/Release.xcconfig
+            bundleId: "$(PRODUCT_BUNDLE_IDENTIFIER)",
+            deploymentTargets: .iOS("17.0"),
+            infoPlist: .extendingDefault(with: [
+                // Runtime URLs and keys — values injected from xcconfig
+                "BackendURL": "$(BACKEND_URL)",
+                "SupabaseURL": "$(SUPABASE_URL)",
+                "SupabaseAnonKey": "$(SUPABASE_ANON_KEY)",
+                "PostHogAPIKey": "$(POSTHOG_API_KEY)",
+                "PostHogHost": "$(POSTHOG_HOST)",
+                "PostHogEnabled": "$(POSTHOG_ENABLED)",
+                // Supabase auth deep-link redirect scheme
+                // Keep this in sync with APIConfig.authRedirectScheme in Swift
+                "CFBundleURLTypes": .array([
+                    .dictionary([
+                        "CFBundleTypeRole": "Editor",
+                        "CFBundleURLName": "com.example.starter",
+                        "CFBundleURLSchemes": .array(["com.example.starter"]),
+                    ]),
+                ]),
+                "UIApplicationSceneManifest": .dictionary([
+                    "UIApplicationSupportsMultipleScenes": .boolean(false),
+                ]),
+                "UILaunchScreen": .dictionary([:]),
+                "UISupportsIndirectInputEvents": .boolean(true),
+                "UISupportedInterfaceOrientations": .array([
+                    "UIInterfaceOrientationPortrait",
+                    "UIInterfaceOrientationLandscapeLeft",
+                    "UIInterfaceOrientationLandscapeRight",
+                ]),
+                "UISupportedInterfaceOrientations~iPad": .array([
+                    "UIInterfaceOrientationPortrait",
+                    "UIInterfaceOrientationPortraitUpsideDown",
+                    "UIInterfaceOrientationLandscapeLeft",
+                    "UIInterfaceOrientationLandscapeRight",
+                ]),
+            ]),
+            sources: ["StarterApp/**/*.swift"],
+            resources: ["StarterApp/Assets.xcassets"],
+            entitlements: .file(path: "StarterApp.entitlements"),
+            dependencies: [
+                .external(name: "Supabase"),
+                .external(name: "PostHog"),
+            ],
+            settings: .settings(
+                base: [
+                    "DEVELOPMENT_TEAM": "$(DEVELOPMENT_TEAM)",
+                    "CODE_SIGN_STYLE": "Automatic",
+                    "MARKETING_VERSION": "1.0",
+                    "CURRENT_PROJECT_VERSION": "1",
+                    "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
+                    "ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME": "AccentColor",
+                    "ENABLE_PREVIEWS": "YES",
+                    "LD_RUNPATH_SEARCH_PATHS": ["$(inherited)", "@executable_path/Frameworks"],
+                    "STRING_CATALOG_GENERATE_SYMBOLS": "YES",
+                    "SWIFT_APPROACHABLE_CONCURRENCY": "YES",
+                    "SWIFT_DEFAULT_ACTOR_ISOLATION": "MainActor",
+                    "SWIFT_EMIT_LOC_STRINGS": "YES",
+                    "SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY": "YES",
+                    "SWIFT_VERSION": "5.0",
+                ]
+            )
+        ),
+        .target(
+            name: "StarterAppTests",
+            destinations: .iOS,
+            product: .unitTests,
+            bundleId: "com.example.StarterAppTests",
+            deploymentTargets: .iOS("17.0"),
+            sources: ["StarterAppTests/**/*.swift"],
+            dependencies: [
+                .target(name: "StarterApp"),
+            ],
+            settings: .settings(
+                base: [
+                    "CODE_SIGNING_ALLOWED": "NO",
+                    "BUNDLE_LOADER": "$(TEST_HOST)",
+                    "SWIFT_APPROACHABLE_CONCURRENCY": "YES",
+                    "SWIFT_VERSION": "5.0",
+                    "TEST_HOST": "$(BUILT_PRODUCTS_DIR)/StarterApp.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/StarterApp",
+                ]
+            )
+        ),
+        .target(
+            name: "StarterAppUITests",
+            destinations: .iOS,
+            product: .uiTests,
+            bundleId: "com.example.StarterAppUITests",
+            deploymentTargets: .iOS("17.0"),
+            sources: ["StarterAppUITests/**/*.swift"],
+            dependencies: [
+                .target(name: "StarterApp"),
+            ],
+            settings: .settings(
+                base: [
+                    "CODE_SIGNING_ALLOWED": "NO",
+                    "SWIFT_APPROACHABLE_CONCURRENCY": "YES",
+                    "SWIFT_VERSION": "5.0",
+                    "TEST_TARGET_NAME": "StarterApp",
+                ]
+            )
+        ),
+    ]
+)
