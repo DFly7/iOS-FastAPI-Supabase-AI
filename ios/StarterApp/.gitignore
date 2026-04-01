@@ -36,6 +36,7 @@ playground.xcworkspace/xcuserdata/
 StarterApp.xcodeproj/
 StarterApp.xcworkspace/
 Derived/
+DerivedDataRun/
 
 # Tuist build cache and SPM dependency build artifacts (keep Tuist/Package.resolved committed)
 .tuist-build/

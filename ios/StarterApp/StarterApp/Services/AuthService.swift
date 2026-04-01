@@ -2,6 +2,7 @@ import AuthenticationServices
 import Auth
 import Combine
 import Foundation
+import OSLog
 import PostHog
 import SwiftUI
 import Supabase
@@ -23,9 +24,10 @@ final class AuthService: ObservableObject {
 
     private var authStateTask: Task<Void, Never>?
 
-    var accessToken: String? {
-        client.auth.currentSession?.accessToken
-    }
+    /// Cached access token — updated in ``applySession(_:)`` and cleared in ``clearSessionState()``.
+    /// Reading ``client.auth.currentSession?.accessToken`` directly can transiently return nil
+    /// right after ``signUp`` / ``signIn`` because the Supabase SDK's Keychain write is async.
+    private(set) var accessToken: String?
 
     init(supabaseURL: URL, supabaseAnonKey: String, startSessionCheck: Bool = true) {
         let configuration = URLSessionConfiguration.default
@@ -91,12 +93,14 @@ final class AuthService: ObservableObject {
     }
 
     private func refreshExpiredAndApply(_ session: Session) async {
+        AppLog.auth.info("Refreshing expired session")
         do {
             let refreshed = try await client.auth.refreshSession(refreshToken: session.refreshToken)
             withAnimation {
                 applySession(refreshed)
             }
         } catch {
+            AppLog.auth.error("refreshSession failed: \(error.localizedDescription, privacy: .public)")
             withAnimation {
                 clearSessionState()
             }
@@ -104,6 +108,7 @@ final class AuthService: ObservableObject {
     }
 
     private func applySession(_ session: Session) {
+        accessToken = session.accessToken
         userId = session.user.id
         userEmail = session.user.email
         isAuthenticated = true
@@ -117,6 +122,8 @@ final class AuthService: ObservableObject {
     }
 
     private func clearSessionState() {
+        AppLog.auth.info("Session cleared")
+        accessToken = nil
         isAuthenticated = false
         userId = nil
         userEmail = nil
@@ -139,6 +146,7 @@ final class AuthService: ObservableObject {
     }
 
     func signOut() {
+        AppLog.auth.info("Sign out requested")
         Task { @MainActor in
             // Intentional: errors from the remote sign-out call are silently
             // ignored with `try?`. Local session state is always cleared
@@ -163,7 +171,9 @@ final class AuthService: ObservableObject {
         do {
             let session = try await client.auth.signIn(email: email, password: password)
             applySession(session)
+            AppLog.auth.info("Signed in")
         } catch {
+            AppLog.auth.error("signIn failed: \(error.localizedDescription, privacy: .public)")
             errorMessage = AuthService.userFacingMessage(for: error)
         }
     }
@@ -178,10 +188,13 @@ final class AuthService: ObservableObject {
             let response = try await client.auth.signUp(email: email, password: password)
             if let session = response.session {
                 applySession(session)
+                AppLog.auth.info("Registered and signed in")
             } else {
                 infoMessage = "Check your email to confirm your account."
+                AppLog.auth.info("Registered (confirm email)")
             }
         } catch {
+            AppLog.auth.error("register failed: \(error.localizedDescription, privacy: .public)")
             errorMessage = AuthService.userFacingMessage(for: error)
         }
     }
@@ -198,7 +211,9 @@ final class AuthService: ObservableObject {
                 redirectTo: URL(string: "\(APIConfig.authRedirectScheme)://magiclink")
             )
             infoMessage = "Check your email for the login link."
+            AppLog.auth.info("Magic link sent")
         } catch {
+            AppLog.auth.error("magic link failed: \(error.localizedDescription, privacy: .public)")
             errorMessage = AuthService.userFacingMessage(for: error)
         }
     }
@@ -213,7 +228,9 @@ final class AuthService: ObservableObject {
                 provider: .google,
                 redirectTo: URL(string: "\(APIConfig.authRedirectScheme)://google")
             )
+            AppLog.auth.info("Google OAuth opened")
         } catch {
+            AppLog.auth.error("Google OAuth failed: \(error.localizedDescription, privacy: .public)")
             errorMessage = AuthService.userFacingMessage(for: error)
         }
     }
@@ -228,7 +245,9 @@ final class AuthService: ObservableObject {
                 credentials: .init(provider: .apple, idToken: idToken, nonce: nonce)
             )
             applySession(session)
+            AppLog.auth.info("Signed in with Apple")
         } catch {
+            AppLog.auth.error("Sign in with Apple failed: \(error.localizedDescription, privacy: .public)")
             errorMessage = AuthService.userFacingMessage(for: error)
         }
     }
@@ -238,7 +257,9 @@ final class AuthService: ObservableObject {
         do {
             let session = try await client.auth.session(from: url)
             applySession(session)
+            AppLog.auth.info("Signed in via deep link")
         } catch {
+            AppLog.auth.error("Deep link session failed: \(error.localizedDescription, privacy: .public)")
             errorMessage = "Could not complete sign-in from link."
         }
     }

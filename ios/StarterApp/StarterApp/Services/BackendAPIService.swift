@@ -2,6 +2,15 @@ import Foundation
 
 /// Calls the FastAPI backend using the same JWT Supabase issued to the app (`Authorization: Bearer …`).
 enum BackendAPIService {
+    /// Shared decoder for all backend responses.
+    /// - dateDecodingStrategy: FastAPI serialises `datetime` fields as ISO 8601 strings
+    ///   (e.g. "2026-03-31T12:00:00Z"). Without this the decoder throws on any `Date` property.
+    private static let decoder: JSONDecoder = {
+        let d = JSONDecoder()
+        d.dateDecodingStrategy = .iso8601
+        return d
+    }()
+
     struct SecureTestResponse: Decodable, Equatable {
         let message: String
         let userId: String?
@@ -9,21 +18,6 @@ enum BackendAPIService {
         enum CodingKeys: String, CodingKey {
             case message
             case userId = "user_id"
-        }
-    }
-
-    /// Row from `public.profiles` returned by `GET /api/v1/me/profile` (backend uses PostgREST + RLS).
-    struct ProfileResponse: Decodable, Equatable {
-        let id: UUID
-        let displayName: String?
-        let avatarUrl: String?
-        let createdAt: String
-
-        enum CodingKeys: String, CodingKey {
-            case id
-            case displayName = "display_name"
-            case avatarUrl = "avatar_url"
-            case createdAt = "created_at"
         }
     }
 
@@ -65,12 +59,12 @@ enum BackendAPIService {
     @MainActor
     static func fetchSecureTest(accessToken: String?) async throws -> SecureTestResponse {
         let data = try await dataForAuthorizedGET(path: "api/v1/secure-test", accessToken: accessToken)
-        return try JSONDecoder().decode(SecureTestResponse.self, from: data)
+        return try decoder.decode(SecureTestResponse.self, from: data)
     }
 
     @MainActor
-    static func fetchMyProfile(accessToken: String?) async throws -> ProfileResponse {
+    static func fetchMyProfile(accessToken: String?) async throws -> ProfileOut {
         let data = try await dataForAuthorizedGET(path: "api/v1/me/profile", accessToken: accessToken)
-        return try JSONDecoder().decode(ProfileResponse.self, from: data)
+        return try decoder.decode(ProfileOut.self, from: data)
     }
 }

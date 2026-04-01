@@ -12,7 +12,7 @@ struct ContentView: View {
 
     @State private var secureTestResult: BackendAPIService.SecureTestResponse?
     @State private var secureTestError: String?
-    @State private var profileResult: BackendAPIService.ProfileResponse?
+    @State private var profileResult: ProfileOut?
     @State private var profileError: String?
     @State private var isCallingBackend = false
     @State private var isLoadingProfile = false
@@ -114,7 +114,7 @@ struct ContentView: View {
     }
 
     @ViewBuilder
-    private func profileSummary(_ profile: BackendAPIService.ProfileResponse) -> some View {
+    private func profileSummary(_ profile: ProfileOut) -> some View {
         HStack(alignment: .top, spacing: 12) {
             profileAvatar(urlString: profile.avatarUrl)
             VStack(alignment: .leading, spacing: 4) {
@@ -130,7 +130,7 @@ struct ContentView: View {
                 Text(profile.id.uuidString)
                     .font(.caption.monospaced())
                     .textSelection(.enabled)
-                Text(profile.createdAt)
+                Text(profile.createdAt.formatted(date: .abbreviated, time: .shortened))
                     .font(.caption.monospaced())
                     .foregroundStyle(.secondary)
                     .textSelection(.enabled)

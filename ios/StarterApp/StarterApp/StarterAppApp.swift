@@ -5,6 +5,7 @@
 //  Created by Darragh Flynn on 30/03/2026.
 //
 
+import OSLog
 import PostHog
 import SwiftUI
 
@@ -20,6 +21,10 @@ struct StarterAppApp: App {
         }
         _authService = StateObject(
             wrappedValue: AuthService(supabaseURL: url, supabaseAnonKey: APIConfig.supabaseAnonKey)
+        )
+        let supabaseHost = url.host ?? url.absoluteString
+        AppLog.general.info(
+            "App init — Supabase host=\(supabaseHost, privacy: .public), PostHog=\(APIConfig.isPostHogConfigured, privacy: .public)"
         )
     }
 
@@ -42,6 +47,9 @@ struct StarterAppApp: App {
             RootView()
                 .environmentObject(authService)
                 .onOpenURL { url in
+                    AppLog.general.info(
+                        "Open URL scheme=\(url.scheme ?? "nil", privacy: .public) host=\(url.host ?? "nil", privacy: .public)"
+                    )
                     Task { @MainActor in
                         await authService.handleIncomingURL(url)
                     }
