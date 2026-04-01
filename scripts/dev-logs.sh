@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# dev-logs.sh — One-command local dev with a 3-pane log view.
+# scripts/dev-logs.sh — One-command local dev with a 3-pane log view.
 #
 # Does everything dev.sh does, then splits the current terminal into log panes:
 #
@@ -14,9 +14,9 @@
 # Other terminals: falls back to tmux  (brew install tmux).
 #
 # Usage:
-#   ./dev-logs.sh              # full stack + 3-pane log view
-#   ./dev-logs.sh --regen      # run tuist install + generate before iOS build
-#   ./dev-logs.sh --no-ios     # services only, 2-pane log view
+#   ./scripts/dev-logs.sh              # full stack + 3-pane log view
+#   ./scripts/dev-logs.sh --regen      # run tuist install + generate before iOS build
+#   ./scripts/dev-logs.sh --no-ios     # services only, 2-pane log view
 #
 # Controls (iTerm2):
 #   Click or Cmd+Opt+Arrow   switch panes
@@ -42,6 +42,15 @@ while [[ $# -gt 0 ]]; do
 done
 
 # ---------------------------------------------------------------------------
+# Bootstrap
+# ---------------------------------------------------------------------------
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck source=_lib.sh
+source "$REPO_ROOT/scripts/_lib.sh"
+
+SESSION="dev-stack"
+
+# ---------------------------------------------------------------------------
 # Prerequisites — tmux only needed outside iTerm2
 # ---------------------------------------------------------------------------
 if [[ "${TERM_PROGRAM:-}" != "iTerm.app" ]]; then
@@ -51,59 +60,6 @@ if [[ "${TERM_PROGRAM:-}" != "iTerm.app" ]]; then
     exit 1
   }
 fi
-
-# ---------------------------------------------------------------------------
-# Paths
-# ---------------------------------------------------------------------------
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BACKEND_DIR="$REPO_ROOT/backend"
-ENV_FILE="$BACKEND_DIR/.env"
-ENV_EXAMPLE="$BACKEND_DIR/.env.example"
-XCCONFIG="$REPO_ROOT/ios/StarterApp/Config-Debug.xcconfig"
-XCCONFIG_EXAMPLE="$REPO_ROOT/ios/StarterApp/Config.example.xcconfig"
-RUN_SIM="$REPO_ROOT/ios/StarterApp/run-sim.sh"
-
-SUPA_LOCAL_URL="http://127.0.0.1:54321"
-SUPA_DOCKER_URL="http://host.docker.internal:54321"
-BACKEND_LOCAL_URL="http://127.0.0.1:8000"
-BACKEND_HEALTHZ="$BACKEND_LOCAL_URL/healthz"
-
-SESSION="dev-stack"
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-upsert_env() {
-  local file="$1" key="$2" value="$3"
-  if grep -q "^${key}=" "$file" 2>/dev/null; then
-    local current
-    current=$(grep "^${key}=" "$file" | cut -d= -f2-)
-    if [[ "$current" != "$value" ]]; then
-      sed -i '' "s|^${key}=.*|${key}=${value}|" "$file"
-      echo "    updated $key"
-    fi
-  else
-    echo "${key}=${value}" >> "$file"
-    echo "    added   $key"
-  fi
-}
-
-upsert_xcconfig() {
-  local file="$1" key="$2" value="$3"
-  if grep -q "^${key} = " "$file" 2>/dev/null; then
-    local current
-    current=$(grep "^${key} = " "$file" | sed "s|^${key} = ||")
-    if [[ "$current" != "$value" ]]; then
-      sed -i '' "s|^${key} = .*|${key} = ${value}|" "$file"
-      echo "    updated $key"
-    fi
-  else
-    echo "${key} = ${value}" >> "$file"
-    echo "    added   $key"
-  fi
-}
-
-xcconfig_url() { echo "$1" | sed 's|://|:/$()/|'; }
 
 # ---------------------------------------------------------------------------
 # Cleanup — idempotent so INT + EXIT don't double-fire
@@ -122,94 +78,39 @@ cleanup() {
 trap cleanup INT TERM EXIT
 
 # ---------------------------------------------------------------------------
-# 1. Supabase
+# 1–2. Supabase
 # ---------------------------------------------------------------------------
-echo "==> Starting Supabase (local)…"
-cd "$REPO_ROOT"
-supabase start
-
-echo "==> Reading Supabase credentials…"
-SUPA_STATUS=$(supabase status 2>/dev/null)
-
-# CLI >= 2.x  →  "Publishable" column
-SUPA_ANON_KEY=$(echo "$SUPA_STATUS" | grep "Publishable" | awk '{print $4}')
-# CLI 1.x fallback
-if [[ -z "$SUPA_ANON_KEY" ]]; then
-  SUPA_ANON_KEY=$(echo "$SUPA_STATUS" | grep "anon key" | awk '{print $NF}')
-fi
-
-[[ -n "$SUPA_ANON_KEY" ]] || {
-  echo "Error: Could not read anon key from 'supabase status'."
-  echo "       Output was:"
-  echo "$SUPA_STATUS"
-  exit 1
-}
-echo "    anon key: ${SUPA_ANON_KEY:0:24}…"
+start_supabase
 
 # ---------------------------------------------------------------------------
-# 2. Backend .env
+# 3. Backend .env
 # ---------------------------------------------------------------------------
-echo "==> Configuring backend/.env…"
-if [[ ! -f "$ENV_FILE" ]]; then
-  cp "$ENV_EXAMPLE" "$ENV_FILE"
-  echo "    created from .env.example"
-fi
-upsert_env "$ENV_FILE" "SUPABASE_URL"             "$SUPA_DOCKER_URL"
-upsert_env "$ENV_FILE" "SUPABASE_PUBLIC_ANON_KEY"  "$SUPA_ANON_KEY"
+configure_backend_env
 
 # ---------------------------------------------------------------------------
-# 3. FastAPI — detached so we can proceed; logs streamed in tmux pane
+# 4–5. FastAPI — detached so we can proceed; logs streamed in tmux pane
 # ---------------------------------------------------------------------------
 echo "==> Starting FastAPI backend (docker compose)…"
 (cd "$BACKEND_DIR" && docker compose up --build --detach)
 
-echo "==> Waiting for backend to be ready…"
-WAIT_MAX=60
-WAIT_I=0
-until curl -sf "$BACKEND_HEALTHZ" &>/dev/null; do
-  WAIT_I=$((WAIT_I + 1))
-  [[ $WAIT_I -ge $WAIT_MAX ]] && {
-    echo "Error: Backend did not respond at $BACKEND_HEALTHZ after ${WAIT_MAX}s."
-    exit 1
-  }
-  printf '.'
-  sleep 1
-done
-echo " ready."
+wait_for_backend
 
 # ---------------------------------------------------------------------------
-# 4. iOS Config-Debug.xcconfig
+# 6. iOS xcconfig
 # ---------------------------------------------------------------------------
-echo "==> Configuring ios/Config-Debug.xcconfig…"
-if [[ ! -f "$XCCONFIG" ]]; then
-  cp "$XCCONFIG_EXAMPLE" "$XCCONFIG"
-  echo "    created from Config.example.xcconfig"
-fi
-upsert_xcconfig "$XCCONFIG" "BACKEND_URL"       "$(xcconfig_url "$BACKEND_LOCAL_URL")"
-upsert_xcconfig "$XCCONFIG" "SUPABASE_URL"      "$(xcconfig_url "$SUPA_LOCAL_URL")"
-upsert_xcconfig "$XCCONFIG" "SUPABASE_ANON_KEY" "$SUPA_ANON_KEY"
+configure_ios_xcconfig
 
 # ---------------------------------------------------------------------------
-# 5. Tuist + iOS Simulator
+# 7. Tuist + iOS Simulator
 # ---------------------------------------------------------------------------
 if ! $NO_IOS; then
-  IOS_DIR="$REPO_ROOT/ios/StarterApp"
-  command -v tuist &>/dev/null || { echo "Error: 'tuist' not found. Install from https://docs.tuist.dev"; exit 1; }
-
-  if $REGEN || [[ ! -d "$IOS_DIR/Tuist/.build" ]]; then
-    echo "==> tuist install (resolving packages)…"
-    (cd "$IOS_DIR" && tuist install)
-  fi
-
-  echo "==> tuist generate (refreshing Xcode project)…"
-  (cd "$IOS_DIR" && tuist generate --no-open)
-
+  run_tuist "$REGEN"
   echo "==> Building and launching iOS Simulator…"
-  "$RUN_SIM"
+  "$IOS_SIM"
 fi
 
 # ---------------------------------------------------------------------------
-# 6. Build log scripts (written to temp files — runs inside each pane at
+# 8. Build log scripts (written to temp files — runs inside each pane at
 #    open time, not now, so container lookups are always fresh and errors
 #    keep the pane alive rather than silently exiting).
 # ---------------------------------------------------------------------------
@@ -220,7 +121,6 @@ LOGSCRIPTS=$(mktemp -d)
 PANE_PATH='/usr/local/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/bin:/bin:/usr/sbin:/sbin'
 PANE_PATH="${PANE_PATH}:/Applications/Docker.app/Contents/Resources/bin"
 
-# FastAPI
 cat > "$LOGSCRIPTS/fastapi.sh" <<SCRIPT
 #!/usr/bin/env bash
 export PATH="${PANE_PATH}:\$PATH"
@@ -257,7 +157,6 @@ else
 fi
 SCRIPT
 
-# iOS
 cat > "$LOGSCRIPTS/ios.sh" <<SCRIPT
 #!/usr/bin/env bash
 export PATH="${PANE_PATH}:\$PATH"
@@ -270,12 +169,8 @@ SCRIPT
 
 chmod +x "$LOGSCRIPTS/fastapi.sh" "$LOGSCRIPTS/supa.sh" "$LOGSCRIPTS/ios.sh"
 
-FASTAPI_LOG_CMD="$LOGSCRIPTS/fastapi.sh"
-SUPA_LOG_CMD="$LOGSCRIPTS/supa.sh"
-IOS_LOG_CMD="$LOGSCRIPTS/ios.sh"
-
 # ---------------------------------------------------------------------------
-# 7. Open log panes
+# 9. Open log panes
 # ---------------------------------------------------------------------------
 echo ""
 echo "==> Launching log view…"
@@ -286,7 +181,7 @@ echo ""
 
 if [[ "${TERM_PROGRAM:-}" == "iTerm.app" ]] && [[ -z "${TMUX:-}" ]]; then
   # ── iTerm2: split this tab in-place, no new window ───────────────────────
-  #
+
   if $NO_IOS; then
     osascript <<APPLESCRIPT
 tell application "iTerm2"
@@ -320,7 +215,7 @@ APPLESCRIPT
   echo ""
   # Run FastAPI logs in this (top) pane.
   # EXIT trap fires cleanup when this pane is closed or Ctrl+C'd.
-  "$FASTAPI_LOG_CMD" || true
+  "$LOGSCRIPTS/fastapi.sh" || true
 
 else
   # ── tmux fallback (non-iTerm2 or already inside tmux) ────────────────────
@@ -340,8 +235,8 @@ else
     tmux select-layout -t "$SESSION:0" even-vertical
     tmux select-pane -t "$SESSION:0.0" -T "  FastAPI  "
     tmux select-pane -t "$SESSION:0.1" -T "  Supabase  "
-    tmux send-keys -t "$SESSION:0.0" "'$FASTAPI_LOG_CMD'" Enter
-    tmux send-keys -t "$SESSION:0.1" "'$SUPA_LOG_CMD'"    Enter
+    tmux send-keys -t "$SESSION:0.0" "'$LOGSCRIPTS/fastapi.sh'" Enter
+    tmux send-keys -t "$SESSION:0.1" "'$LOGSCRIPTS/supa.sh'"    Enter
   else
     tmux rename-window -t "$SESSION:0" "logs"
     tmux split-window -v -p 40 -t "$SESSION:0"
@@ -349,9 +244,9 @@ else
     tmux select-pane -t "$SESSION:0.0" -T "  FastAPI  "
     tmux select-pane -t "$SESSION:0.1" -T "  Supabase  "
     tmux select-pane -t "$SESSION:0.2" -T "  iOS Simulator  "
-    tmux send-keys -t "$SESSION:0.0" "'$FASTAPI_LOG_CMD'" Enter
-    tmux send-keys -t "$SESSION:0.1" "'$SUPA_LOG_CMD'"    Enter
-    tmux send-keys -t "$SESSION:0.2" "'$IOS_LOG_CMD'"     Enter
+    tmux send-keys -t "$SESSION:0.0" "'$LOGSCRIPTS/fastapi.sh'" Enter
+    tmux send-keys -t "$SESSION:0.1" "'$LOGSCRIPTS/supa.sh'"    Enter
+    tmux send-keys -t "$SESSION:0.2" "'$LOGSCRIPTS/ios.sh'"     Enter
   fi
 
   tmux select-pane -t "$SESSION:0.0"
