@@ -27,7 +27,7 @@ Usage example (inside a router):
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 import resend
 from pydantic import EmailStr
@@ -77,15 +77,15 @@ async def send_email(
     if reply_to:
         params["reply_to"] = str(reply_to)
     if tags:
-        params["tags"] = tags
+        params["tags"] = cast(Any, tags)
 
     try:
-        result: resend.Emails.SendResponse = await resend.Emails.send_async(params)
+        result = await resend.Emails.send_async(params)
     except Exception:
         logger.exception("resend_send_failed", to_count=len(to))
         raise
 
     logger.info("resend_send_ok", email_id=getattr(result, "id", None))
     if isinstance(result, dict):
-        return result
+        return cast(dict[str, Any], result)
     return {"id": getattr(result, "id", None)}

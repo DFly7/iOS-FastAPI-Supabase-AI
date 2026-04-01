@@ -47,7 +47,10 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException) 
     )
 
 
-async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+async def validation_exception_handler(
+    request: Request,
+    exc: RequestValidationError,
+) -> JSONResponse:
     request_id = getattr(request.state, "request_id", "unknown")
     user_id = getattr(request.state, "user_id", None)
     errors = exc.errors()

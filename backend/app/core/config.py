@@ -58,12 +58,10 @@ class Settings(BaseSettings):
     )
 
     @computed_field
-    @property
     def debug(self) -> bool:
         return self.environment != "production"
 
     @computed_field
-    @property
     def allowed_origins(self) -> list[str]:
         return [o.strip() for o in self.allowed_origins_csv.split(",") if o.strip()]
 

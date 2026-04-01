@@ -5,13 +5,14 @@ PII-safe logging helpers and background task log correlation.
 import asyncio
 import re
 import uuid
+from collections.abc import Coroutine
 from contextlib import contextmanager
-from typing import Any, Coroutine, Dict, Optional, TypeVar
+from typing import Any, cast
 
 import structlog
+from structlog.stdlib import BoundLogger
 
 logger = structlog.get_logger(__name__)
-T = TypeVar("T")
 
 EMAIL_PATTERN = re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b")
 PHONE_PATTERN = re.compile(r"\b\d{3}[-.]?\d{3}[-.]?\d{4}\b")
@@ -53,8 +54,8 @@ class BackgroundTaskLogger:
     def __init__(
         self,
         task_name: str,
-        request_id: Optional[str] = None,
-        user_id: Optional[str] = None,
+        request_id: str | None = None,
+        user_id: str | None = None,
         **extra_context: Any,
     ):
         self.task_name = task_name
@@ -63,8 +64,8 @@ class BackgroundTaskLogger:
         self.extra_context = extra_context
         self.logger = structlog.get_logger(task_name)
 
-    async def __aenter__(self):
-        context: Dict[str, Any] = {
+    async def __aenter__(self) -> BoundLogger:
+        context: dict[str, Any] = {
             "task_name": self.task_name,
             "request_id": self.request_id,
             **self.extra_context,
@@ -73,7 +74,7 @@ class BackgroundTaskLogger:
             context["user_id"] = self.user_id
         structlog.contextvars.bind_contextvars(**context)
         self.logger.info("background_task_started")
-        return self.logger
+        return cast(BoundLogger, self.logger)
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         if exc_type is not None:
@@ -89,11 +90,11 @@ class BackgroundTaskLogger:
         return False
 
 
-async def run_in_background(
+async def run_in_background[T](
     coro: Coroutine[Any, Any, T],
     task_name: str,
-    request_id: Optional[str] = None,
-    user_id: Optional[str] = None,
+    request_id: str | None = None,
+    user_id: str | None = None,
     **extra_context: Any,
 ) -> asyncio.Task[T]:
     async def _wrapped_coro():
@@ -108,13 +109,13 @@ async def run_in_background(
     return asyncio.create_task(_wrapped_coro())
 
 
-def safe_log_dict(data: Dict[str, Any], sensitive_keys: Optional[set] = None) -> Dict[str, Any]:
+def safe_log_dict(data: dict[str, Any], sensitive_keys: set | None = None) -> dict[str, Any]:
     from app.logging_config import SENSITIVE_FIELDS
 
     sensitive = SENSITIVE_FIELDS.copy()
     if sensitive_keys:
         sensitive.update(sensitive_keys)
-    safe_dict: Dict[str, Any] = {}
+    safe_dict: dict[str, Any] = {}
     for key, value in data.items():
         if any(sensitive_field in key.lower() for sensitive_field in sensitive):
             safe_dict[key] = "***MASKED***"

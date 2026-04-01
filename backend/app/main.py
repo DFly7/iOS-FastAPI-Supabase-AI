@@ -1,12 +1,12 @@
 from contextlib import asynccontextmanager
-
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from slowapi.middleware import SlowAPIMiddleware
+from typing import cast
 
 import sentry_sdk
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from sentry_sdk.integrations.fastapi import FastApiIntegration
 from sentry_sdk.integrations.starlette import StarletteIntegration
+from slowapi.middleware import SlowAPIMiddleware
 
 from app.api.v1.router import api_router
 from app.core.auth import close_jwk_http_client
@@ -61,7 +61,8 @@ app.state.limiter = limiter
 
 register_exception_handlers(app)
 
-# Order: last registered runs first. Desired flow: RequestID → AuthContext → SlowAPI → AccessLog → route
+# Order: last registered runs first. Desired flow:
+# RequestID → AuthContext → SlowAPI → AccessLog → route
 app.add_middleware(AccessLogMiddleware)
 if settings.rate_limit_enabled:
     app.add_middleware(SlowAPIMiddleware)
@@ -72,7 +73,8 @@ app.add_middleware(RequestIDMiddleware)
 # When origins are explicit, credentials (cookies / Authorization headers) are allowed.
 # For a mobile-only API this is moot, but keeping it correct avoids confusion if a
 # web frontend is added later.
-cors_origins = ["*"] if settings.allowed_origins == ["*"] else settings.allowed_origins
+_allowed = cast(list[str], settings.allowed_origins)
+cors_origins = ["*"] if _allowed == ["*"] else _allowed
 cors_credentials = cors_origins != ["*"]
 app.add_middleware(
     CORSMiddleware,

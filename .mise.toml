@@ -9,6 +9,7 @@ uv         = "0.11.2" # pinned; bump with `mise use uv@latest`
 
 # iOS
 tuist      = "4.44.3" # pinned; bump with `mise use tuist@latest`
+swiftlint  = "0.63.2" # pinned; run from ios/StarterApp: `swiftlint lint --strict`
 
 # Supabase (keep in sync: .github/workflows/backend-integration.yml, supabase-migrations.yml)
 supabase   = "2.84.2" # pinned; bump with `mise use supabase@latest`

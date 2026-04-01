@@ -22,7 +22,7 @@
 
 ## What this gives you
 
-Spinning up an authenticated iOS app with a custom backend and a real database typically takes days of glue work. This template collapses it to a single `./run.sh`.
+Spinning up an authenticated iOS app with a custom backend and a real database typically takes days of glue work. This template collapses it to **`make dev`** from the repo root.
 
 | Layer | Technology | What's wired up |
 |-------|-----------|-----------------|
@@ -138,19 +138,22 @@ cp ios/StarterApp/Config.example.xcconfig ios/StarterApp/Config-Release.xcconfig
 ### 3. Start everything
 
 ```sh
-./run.sh
+make dev
 ```
 
-This starts Supabase, the backend (Docker Compose), and two HTTPS tunnels — then prints the live URLs. **Ctrl+C stops everything cleanly.**
+This runs **`scripts/dev.sh`**: starts Supabase, brings up FastAPI via Docker Compose, syncs `backend/.env` and iOS `Config-Debug.xcconfig` with local URLs and keys, runs `tuist generate`, then builds and launches the app in the **iOS Simulator** (no tunnel required on the Simulator). **Ctrl+C stops everything cleanly.**
 
 ```
-All services running:
-  Supabase API  → https://my-supa-api.instatunnel.dev
-  Backend API   → https://my-backend-api.instatunnel.dev
-  Supabase UI   → http://127.0.0.1:54323 (local only)
+Services:
+  Supabase Studio → http://127.0.0.1:54323
+  FastAPI docs    → http://127.0.0.1:8000/docs
 ```
 
-### 4. Generate and open the iOS project
+For a physical device you still need HTTPS tunnel URLs in xcconfig; see **[local-setup.md](local-setup.md)**. Extra flags: `make dev ARGS="--regen"` (tuist install + generate), `ARGS="--no-ios"` (services only), `ARGS="--sim-logs"`.
+
+### 4. Open the iOS project (optional)
+
+If you used **`make dev`** with the default flow, Tuist already ran and the Simulator may already have the app. To work in Xcode manually (or after **`make dev ARGS="--no-ios"`**):
 
 ```sh
 cd ios/StarterApp
@@ -158,7 +161,7 @@ tuist install && tuist generate
 open StarterApp.xcodeproj
 ```
 
-Build and run on Simulator or a physical device.
+Build and run on the Simulator or a physical device (device builds need valid signing and tunnel URLs — see **local-setup.md**).
 
 ---
 
@@ -180,9 +183,15 @@ Build and run on Simulator or a physical device.
 │   └── migrations/          # SQL migrations (versioned)
 ├── .github/workflows/       # CI/CD pipelines
 ├── .mise.toml               # Pinned tool versions (Python, uv, Tuist, Supabase CLI)
-├── run.sh                   # Start everything (Supabase + backend + tunnels)
-├── build-run.sh             # Rebuild Docker image, then run.sh
-└── local-setup.md           # Full local dev runbook
+├── Makefile                 # make dev → scripts/dev.sh; make ios-gen, sync-models, etc.
+├── scripts/
+│   ├── dev.sh               # Full local stack: Supabase + Docker backend + Tuist + Simulator
+│   ├── dev-logs.sh          # Same stack with tmux log panes (make dev-logs)
+│   ├── ios-sim.sh           # Build / launch Simulator (used by dev.sh)
+│   ├── tunnel.sh            # Optional HTTPS forwarding for physical devices
+│   ├── sync_models.py       # Pydantic → Swift Codable (make sync-models / check-models)
+│   └── _lib.sh              # Shared helpers for bash scripts
+└── local-setup.md           # Full local dev runbook (tunnels, physical device, manual tabs)
 ```
 
 ---

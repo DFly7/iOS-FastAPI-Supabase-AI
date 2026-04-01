@@ -4,7 +4,8 @@ Structured logging with structlog: JSON in production, console in development.
 
 import logging
 import sys
-from typing import Any
+from collections.abc import MutableMapping
+from typing import Any, cast
 
 import structlog
 from structlog.types import EventDict, Processor
@@ -28,15 +29,19 @@ SENSITIVE_FIELDS = {
 
 
 def mask_sensitive_data(logger: Any, method_name: str, event_dict: EventDict) -> EventDict:
-    def _mask_dict(d: dict) -> dict:
-        masked = {}
+    def _mask_dict(d: MutableMapping[str, Any]) -> dict[str, Any]:
+        masked: dict[str, Any] = {}
         for key, value in d.items():
-            if isinstance(key, str) and any(sensitive in key.lower() for sensitive in SENSITIVE_FIELDS):
+            if isinstance(key, str) and any(
+                sensitive in key.lower() for sensitive in SENSITIVE_FIELDS
+            ):
                 masked[key] = "***MASKED***"
             elif isinstance(value, dict):
                 masked[key] = _mask_dict(value)
             elif isinstance(value, (list, tuple)):
-                masked[key] = [_mask_dict(item) if isinstance(item, dict) else item for item in value]
+                masked[key] = [
+                    _mask_dict(item) if isinstance(item, dict) else item for item in value
+                ]
             else:
                 masked[key] = value
         return masked
@@ -99,7 +104,7 @@ def setup_logging() -> None:
 
 
 def get_logger(name: str | None = None) -> structlog.stdlib.BoundLogger:
-    return structlog.get_logger(name)
+    return cast(structlog.stdlib.BoundLogger, structlog.get_logger(name))
 
 
 logger = get_logger(__name__)

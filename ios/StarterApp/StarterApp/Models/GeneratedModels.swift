@@ -7,8 +7,39 @@
 
 import Foundation
 
+/// POST /me/notes request body.
+struct NoteIn: Codable, Equatable {
+    let title: String
+    let body: String?
+}
+
+/// Auto-generated from `NoteOut` (backend/app/schemas).
+struct NoteOut: Codable, Equatable {
+    let id: UUID
+    let userId: UUID
+    let title: String
+    let body: String?
+    let createdAt: Date
+    let updatedAt: Date
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case userId = "user_id"
+        case title
+        case body
+        case createdAt = "created_at"
+        case updatedAt = "updated_at"
+    }
+}
+
+/// PATCH /me/notes/{id} request body — all fields optional (partial update).
+struct NoteUpdate: Codable, Equatable {
+    let title: String?
+    let body: String?
+}
+
 /// Auto-generated from `ProfileOut` (backend/app/schemas).
-struct ProfileOut: Decodable, Equatable {
+struct ProfileOut: Codable, Equatable {
     let id: UUID
     let displayName: String?
     let avatarUrl: String?
@@ -19,5 +50,16 @@ struct ProfileOut: Decodable, Equatable {
         case displayName = "display_name"
         case avatarUrl = "avatar_url"
         case createdAt = "created_at"
+    }
+}
+
+/// PATCH /me/profile request body — all fields optional (partial update).
+struct ProfileUpdate: Codable, Equatable {
+    let displayName: String?
+    let avatarUrl: String?
+
+    enum CodingKeys: String, CodingKey {
+        case displayName = "display_name"
+        case avatarUrl = "avatar_url"
     }
 }

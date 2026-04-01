@@ -182,7 +182,7 @@ def generate_swift_struct(class_name: str, schema: dict) -> str:
     doc = description or f"Auto-generated from `{class_name}` (backend/app/schemas)."
     lines.append(f"/// {doc}")
 
-    lines.append(f"struct {class_name}: Decodable, Equatable {{")
+    lines.append(f"struct {class_name}: Codable, Equatable {{")
 
     # Properties
     for prop_name, prop_schema in properties.items():

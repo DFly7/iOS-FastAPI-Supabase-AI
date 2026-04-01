@@ -21,6 +21,10 @@ on:
       - ".github/workflows/backend-integration.yml"
   workflow_dispatch:
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   integration:
     name: Supabase + FastAPI integration

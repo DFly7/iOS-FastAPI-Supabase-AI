@@ -39,7 +39,24 @@ enum APIConfig {
     }()
 
     /// Custom URL scheme for OAuth / magic-link redirects (must match Supabase redirect allow list).
-    static let authRedirectScheme = "com.example.starter"
+    ///
+    /// Derived at runtime from `CFBundleURLTypes` in Info.plist, which is populated from
+    /// `PRODUCT_BUNDLE_IDENTIFIER` by Project.swift. This means renaming the app bundle
+    /// automatically keeps the scheme correct without any manual Swift change.
+    static let authRedirectScheme: String = {
+        guard
+            let urlTypes = Bundle.main.infoDictionary?["CFBundleURLTypes"] as? [[String: Any]],
+            let firstType = urlTypes.first,
+            let schemes = firstType["CFBundleURLSchemes"] as? [String],
+            let scheme = schemes.first, !scheme.isEmpty
+        else {
+            fatalError(
+                "CFBundleURLSchemes is missing from Info.plist. " +
+                "Check CFBundleURLTypes in Project.swift and regenerate the project with `tuist generate`."
+            )
+        }
+        return scheme
+    }()
 
     /// True when `POSTHOG_API_KEY` is non-empty and PostHog is not explicitly turned off.
     ///

@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Backend (FastAPI) — Ship · DX · Agent Review</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #070d14;
+      --bg2: #0f1720;
+      --ink: #e3eef8;
+      --muted: #7a8fa3;
+      --line: #1e3a52;
+      --accent: #5eead4;
+      --accent2: #7dd3fc;
+      --warn: #fb923c;
+      --ok: #4ade80;
+      --shadow: 0 24px 70px rgba(0,30,50,.5);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      font-family: "Source Sans 3", system-ui, sans-serif;
+      background:
+        radial-gradient(ellipse 100% 80% at 0% 0%, rgba(94,234,212,.14), transparent 50%),
+        radial-gradient(ellipse 80% 60% at 100% 10%, rgba(125,211,252,.1), transparent 45%),
+        var(--bg);
+      color: var(--ink);
+      line-height: 1.55;
+      font-size: 15px;
+    }
+    .grid-bg {
+      pointer-events: none;
+      position: fixed;
+      inset: 0;
+      opacity: .055;
+      background-image:
+        linear-gradient(var(--line) 1px, transparent 1px),
+        linear-gradient(90deg, var(--line) 1px, transparent 1px);
+      background-size: 48px 48px;
+      z-index: 0;
+    }
+    main { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; padding: 2.5rem 1.35rem 4rem; }
+    header.hero {
+      margin-bottom: 2.25rem;
+      border: 1px solid var(--line);
+      background: linear-gradient(160deg, var(--bg2), transparent);
+      padding: 2rem 1.75rem;
+      box-shadow: var(--shadow);
+      clip-path: polygon(0 12px, 12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%);
+    }
+    .hero h1 {
+      font-family: "Archivo Black", sans-serif;
+      font-weight: 400;
+      font-size: clamp(1.65rem, 4vw, 2.65rem);
+      line-height: 1.05;
+      margin: 0 0 0.5rem;
+      letter-spacing: -0.02em;
+      color: var(--accent);
+      text-transform: uppercase;
+    }
+    .hero .sub { font-size: 1rem; color: var(--muted); max-width: 64ch; margin: 0; }
+    .meta-row {
+      display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 1.2rem;
+      font-family: "JetBrains Mono", monospace;
+      font-size: .7rem;
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      color: var(--muted);
+    }
+    .pill {
+      border: 1px solid var(--line);
+      padding: .35rem .65rem;
+      background: rgba(125,211,252,.05);
+    }
+    .scores {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: .85rem;
+      margin: 2rem 0 1rem;
+    }
+    .score-card {
+      border: 1px solid var(--line);
+      padding: 1rem;
+      background: var(--bg2);
+    }
+    .score-card strong {
+      display: block;
+      font-family: "Archivo Black", sans-serif;
+      font-size: 1.65rem;
+      color: var(--accent2);
+      font-weight: 400;
+    }
+    .score-card span {
+      font-size: .76rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+    .meter { height: 4px; background: var(--line); margin-top: .55rem; border-radius: 2px; overflow: hidden; }
+    .meter > i {
+      display: block; height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      border-radius: 2px;
+    }
+    nav.tabs { display: flex; flex-wrap: wrap; gap: .5rem; margin: 2rem 0 1.25rem; }
+    nav.tabs button {
+      font-family: "JetBrains Mono", monospace;
+      font-size: .72rem;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      border: 1px solid var(--line);
+      background: transparent;
+      color: var(--muted);
+      padding: .5rem .85rem;
+      cursor: pointer;
+      transition: color .15s, border-color .15s, background .15s;
+    }
+    nav.tabs button:hover { color: var(--ink); border-color: var(--muted); }
+    nav.tabs button.active {
+      color: var(--bg);
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+    section.panel {
+      display: none;
+      border: 1px solid var(--line);
+      padding: 1.45rem 1.3rem 1.65rem;
+      background: rgba(15, 23, 32, .9);
+      margin-bottom: 1.2rem;
+      box-shadow: var(--shadow);
+    }
+    section.panel.active { display: block; animation: in .35s ease; }
+    @keyframes in { from { opacity: 0; transform: translateY(8px);} to { opacity: 1; transform: none;} }
+    h2 {
+      font-family: "Archivo Black", sans-serif;
+      font-weight: 400;
+      font-size: 1.15rem;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      color: var(--accent);
+      margin: 0 0 .9rem;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: .45rem;
+    }
+    h3 {
+      font-size: .88rem;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--accent2);
+      margin: 1.4rem 0 .5rem;
+    }
+    ul { margin: .35rem 0; padding-left: 1.15rem; }
+    li { margin: .32rem 0; }
+    li::marker { color: var(--accent); }
+    .good { color: var(--ok); }
+    .caution { color: var(--warn); }
+    .mono {
+      font-family: "JetBrains Mono", monospace;
+      font-size: .82rem;
+      background: rgba(125,211,252,.08);
+      padding: .1rem .35rem;
+      border-radius: 3px;
+    }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    @media (max-width: 720px) { .two-col { grid-template-columns: 1fr; } }
+    .callout {
+      border-left: 3px solid var(--accent2);
+      padding: .75rem 1rem;
+      margin: 1rem 0;
+      background: rgba(125,211,252,.07);
+      font-size: .92rem;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: .87rem; margin: 1rem 0; }
+    th, td { border: 1px solid var(--line); padding: .45rem .6rem; text-align: left; }
+    th { background: rgba(94,234,212,.08); color: var(--accent2); font-weight: 700; }
+    footer {
+      margin-top: 2.25rem;
+      font-size: .76rem;
+      color: var(--muted);
+      font-family: "JetBrains Mono", monospace;
+    }
+  </style>
+</head>
+<body>
+  <div class="grid-bg" aria-hidden="true"></div>
+  <main>
+    <header class="hero">
+      <h1>Backend review</h1>
+      <p class="sub">
+        Assessment of the <strong>FastAPI</strong> service in <span class="mono">backend/app</span>:
+        production readiness, day-to-day DX, and suitability for agent-driven maintenance.
+        Qualitative scores (1–10) are a compass for a <em>template</em>, not a benchmark against mega-services.
+      </p>
+      <div class="meta-row">
+        <span class="pill">FastAPI · uv · Pydantic v2</span>
+        <span class="pill">Supabase PostgREST + JWKS</span>
+        <span class="pill">structlog · ruff · mypy</span>
+        <span class="pill">2026-04-01</span>
+      </div>
+      <div class="scores">
+        <div class="score-card"><strong>8</strong><span>Deploy / ship</span><div class="meter"><i style="width:80%"></i></div></div>
+        <div class="score-card"><strong>9</strong><span>Developer DX</span><div class="meter"><i style="width:90%"></i></div></div>
+        <div class="score-card"><strong>7.5</strong><span>Agent ergonomics</span><div class="meter"><i style="width:75%"></i></div></div>
+        <div class="score-card"><strong>8.5</strong><span>Fork usability</span><div class="meter"><i style="width:85%"></i></div></div>
+        <div class="score-card"><strong>9</strong><span>Layering &amp; patterns</span><div class="meter"><i style="width:90%"></i></div></div>
+      </div>
+    </header>
+
+    <nav class="tabs" role="tablist" aria-label="Report sections">
+      <button type="button" class="active" data-panel="ship" role="tab" aria-selected="true">Ship</button>
+      <button type="button" data-panel="dx" role="tab" aria-selected="false">DX</button>
+      <button type="button" data-panel="agent" role="tab" aria-selected="false">Agent</button>
+      <button type="button" data-panel="layers" role="tab" aria-selected="false">Architecture</button>
+      <button type="button" data-panel="improve" role="tab" aria-selected="false">Improve</button>
+    </nav>
+
+    <section id="panel-ship" class="panel active" role="tabpanel">
+      <h2>Shipping &amp; production</h2>
+      <div class="callout">
+        You are <strong>closer to “real API” than demo-tier</strong>: JWT verification, RLS-aware Supabase clients,
+        structured errors, optional metrics/Sentry, and Docker packaging. Remaining work is mostly <em>ops contracts</em>
+        (secrets, horizontal scaling notes, auth hardening checklist).
+      </div>
+      <h3>Strengths</h3>
+      <ul>
+        <li><span class="good">Dockerfile</span> — uv-based, frozen lock, bytecode compile, slim base; <span class="mono">docker-compose</span> exposes 8000 with <span class="mono">.env</span>.</li>
+        <li><span class="good">JWT via JWKS</span> — Async JWKS fetch/cache, RS256/ES256, audience <span class="mono">authenticated</span>, keyed refresh on unknown <span class="mono">kid</span>; client closed on lifespan shutdown.</li>
+        <li><span class="good">Per-request Supabase client</span> — Documented rationale: <span class="mono">postgrest.auth()</span> mutates state; avoids cross-request races (scale-up path noted in code).</li>
+        <li><span class="good">CORS</span> — Correct <span class="mono">allow_credentials</span> behavior when origins are explicit vs wildcard.</li>
+        <li><span class="good">Observability hooks</span> — Sentry optional; Prometheus <span class="mono">/metrics</span> behind flag with an explicit “lock down in prod” warning.</li>
+        <li><span class="good">CI → registry</span> — Optional GHCR push gated by <span class="mono">PUBLISH_BACKEND_IMAGE</span>; build cache via GHA.</li>
+      </ul>
+      <h3>Gaps / risks</h3>
+      <ul>
+        <li><span class="caution">Metrics endpoint</span> — Unauthenticated by design; document reverse-proxy IP allowlists or remove mount in public edge.</li>
+        <li><span class="caution">No Helm/K8s/TF</span> — Fine for template scope; adopters bring their own orchestration.</li>
+        <li><span class="caution">Sync route handlers + async JWT</span> — Works; under extreme load you may want async routes and connection pooling strategy docs.</li>
+      </ul>
+    </section>
+
+    <section id="panel-dx" class="panel" role="tabpanel" hidden>
+      <h2>Developer experience</h2>
+      <h3>What shines</h3>
+      <ul>
+        <li><span class="mono">uv</span> + <span class="mono">uv.lock</span> — reproducible installs; CI uses <span class="mono">uv sync --frozen</span>.</li>
+        <li><span class="good">Ruff</span> (lint + format) and <span class="good">mypy</span> on <span class="mono">app</span>; pragmatic <span class="mono">B008</span> ignore for FastAPI DI.</li>
+        <li><span class="good">Settings</span> — <span class="mono">pydantic-settings</span>, env-dependent defaults for log level / JSON logs / Sentry environment; CSV origins; bool coercion from strings.</li>
+        <li><span class="good">OpenAPI</span> — Swagger with <span class="mono">persistAuthorization</span>; great for manual QA and for exporting types elsewhere.</li>
+        <li><span class="good">Testing story</span> — pytest asyncio auto mode; integration marker; separate workflow runs real <span class="mono">supabase start</span> on <span class="mono">main</span>.</li>
+        <li><span class="good">Exception surface</span> — Normalized JSON with <span class="mono">request_id</span>; PostgREST RLS code <span class="mono">42501</span> mapped to 403; rate limit returns <span class="mono">Retry-After</span> when derivable.</li>
+      </ul>
+      <h3>Friction</h3>
+      <ul>
+        <li>Two entry narratives: <span class="mono">backend/main.py</span> vs <span class="mono">app/main.py</span> — clarify in README which is canonical for Docker vs local <span class="mono">uvicorn</span> (if both exist).</li>
+        <li>Integration tests are intentionally not on every PR — good for speed; new contributors should read workflow comments so they don’t assume “green PR = RLS verified.”</li>
+      </ul>
+    </section>
+
+    <section id="panel-agent" class="panel" role="tabpanel" hidden>
+      <h2>Agent readiness</h2>
+      <p>
+        The codebase is <strong>easy for an LLM to navigate</strong>: thin routers, explicit service/repo files,
+        centralized auth and handlers, and comments that explain <em>why</em> (especially Supabase client lifetime).
+      </p>
+      <h3>Agent-friendly surfaces</h3>
+      <table>
+        <thead><tr><th>Surface</th><th>Why it helps</th></tr></thead>
+        <tbody>
+          <tr><td><span class="mono">app/api/v1/router.py</span></td><td>Obvious place to mount new routers; examples in comments.</td></tr>
+          <tr><td><span class="mono">app/services/*</span> + <span class="mono">app/repositories/*</span></td><td>Clear “add CRUD here” pattern (notes is the reference implementation).</td></tr>
+          <tr><td><span class="mono">app/schemas/</span></td><td>Pydantic source of truth; pairs with <span class="mono">scripts/sync_models.py</span> for iOS.</td></tr>
+          <tr><td><span class="mono">tests/api</span> vs <span class="mono">tests/integration</span></td><td>Clear split; marker <span class="mono">integration</span> documented in pyproject.</td></tr>
+          <tr><td>Workflow YAML comments</td><td>Secrets, fork behavior, and when integration runs — embed policy for agents.</td></tr>
+        </tbody>
+      </table>
+      <div class="callout">
+        <strong>Suggested agent additions:</strong> a short <span class="mono">AGENTS.md</span> with “never put service keys in tests,”
+        “extend notes pattern for new tables,” and “run <span class="mono">uv run ruff check</span> before commit.”
+      </div>
+    </section>
+
+    <section id="panel-layers" class="panel" role="tabpanel" hidden>
+      <h2>Architecture &amp; conventions</h2>
+      <div class="two-col">
+        <div>
+          <h3>Horizontal layers</h3>
+          <ul>
+            <li><span class="good">Router → service → repository</span> for notes; profile routes inline in router (acceptable for small surface; could extract later).</li>
+            <li><span class="good">Auth dependency chain</span> — <span class="mono">verify_jwt</span> → <span class="mono">AuthenticatedClient</span> bundles client + payload.</li>
+            <li><span class="good">Middleware order</span> documented in <span class="mono">main.py</span>: request ID, auth context, rate limit, access log.</li>
+          </ul>
+        </div>
+        <div>
+          <h3>API semantics</h3>
+          <ul>
+            <li>Notes: proper <span class="mono">201</span> on create, <span class="mono">204</span> on delete, PATCH partial updates aligned with Pydantic <span class="mono">exclude_none</span>.</li>
+            <li>Profile PATCH returns 422 when body empty — consistent “no-op not allowed” story.</li>
+          </ul>
+        </div>
+      </div>
+      <h3>Small consistency nits</h3>
+      <ul>
+        <li><span class="mono">auth.payload["sub"]</span> is a string JWT claim; services type some parameters as <span class="mono">UUID</span> — runtime works via downstream <span class="mono">str()</span>; tightening with explicit <span class="mono">UUID(sub)</span> at the router would satisfy stricter type checkers.</li>
+        <li>Placeholder service/repo files: keep or document as “delete when unused” so agents don’t duplicate patterns.</li>
+      </ul>
+    </section>
+
+    <section id="panel-improve" class="panel" role="tabpanel" hidden>
+      <h2>Prioritized improvements</h2>
+      <ol>
+        <li><strong>P1 — AGENTS / Cursor rules</strong> — Document auth client lifecycle, where to add routes, and pytest marker usage.</li>
+        <li><strong>P1 — OpenAPI export (optional)</strong> — CI step to dump schema for mobile/web clients that don’t use <span class="mono">sync_models</span>.</li>
+        <li><strong>P2 — Async depth</strong> — If you adopt async Supabase drivers or shared HTTP pools, document migration; current sync stack is honest and simple.</li>
+        <li><strong>P2 — Profile module split</strong> — Mirror notes: <span class="mono">profile_router.py</span> + service if the surface grows.</li>
+        <li><strong>P3 — Stricter mypy</strong> — Gradually enable for routers; normalize <span class="mono">sub</span> typing at boundaries.</li>
+      </ol>
+      <h3>Verdict</h3>
+      <p>
+        This backend is a <strong>strong teaching template</strong> and a credible starting point for production APIs backed by Supabase.
+        The exception handling, settings model, and notes vertical slice are the standout “copy this” artifacts.
+      </p>
+    </section>
+
+    <footer>Open in a browser — tabs are client-side only.</footer>
+  </main>
+
+  <script>
+    (function () {
+      var tabs = document.querySelectorAll("nav.tabs button");
+      var panels = document.querySelectorAll("section.panel");
+      function show(id) {
+        panels.forEach(function (p) {
+          var on = p.id === "panel-" + id;
+          p.classList.toggle("active", on);
+          p.hidden = !on;
+        });
+        tabs.forEach(function (b) {
+          var on = b.dataset.panel === id;
+          b.classList.toggle("active", on);
+          b.setAttribute("aria-selected", on ? "true" : "false");
+        });
+      }
+      tabs.forEach(function (btn) {
+        btn.addEventListener("click", function () { show(btn.dataset.panel); });
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -1,6 +1,6 @@
 import asyncio
 import functools
-from typing import Any, Dict, Optional, TypedDict
+from typing import Any, TypedDict
 
 import httpx
 import jwt
@@ -26,7 +26,7 @@ class AuthenticatedClient(BaseModel):
 
 class AuthData(TypedDict):
     token: str
-    payload: Dict[str, Any]
+    payload: dict[str, Any]
 
 
 def _supabase_base_url() -> str:
@@ -116,8 +116,8 @@ http_bearer = HTTPBearer(auto_error=False, scheme_name="BearerAuth", bearerForma
 
 
 async def verify_jwt(
-    credentials: Optional[HTTPAuthorizationCredentials] = Security(http_bearer),
-) -> Dict[str, Any]:
+    credentials: HTTPAuthorizationCredentials | None = Security(http_bearer),
+) -> dict[str, Any]:
     if not credentials:
         raise HTTPException(status_code=401, detail="Missing Authorization header")
 

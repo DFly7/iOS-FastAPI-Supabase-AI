@@ -4,7 +4,8 @@ Structured access logging (method, path, status, duration, user, IP, optional bo
 
 import json
 import time
-from typing import Callable, Optional
+from collections.abc import Awaitable, Callable
+from typing import cast
 
 import structlog
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -18,7 +19,7 @@ logger = structlog.get_logger(__name__)
 settings = get_settings()
 
 
-def get_client_ip(request: Request) -> Optional[str]:
+def get_client_ip(request: Request) -> str | None:
     forwarded_for = request.headers.get("X-Forwarded-For")
     if forwarded_for:
         return forwarded_for.split(",")[-1].strip()
@@ -30,7 +31,7 @@ def get_client_ip(request: Request) -> Optional[str]:
     return None
 
 
-def get_user_details(request: Request) -> tuple[Optional[str], Optional[str]]:
+def get_user_details(request: Request) -> tuple[str | None, str | None]:
     user_id = getattr(request.state, "user_id", None)
     user_email = getattr(request.state, "user_email", None)
     user = getattr(request.state, "user", None)
@@ -42,7 +43,7 @@ def get_user_details(request: Request) -> tuple[Optional[str], Optional[str]]:
     return user_id, user_email
 
 
-async def get_request_body(request: Request, max_size: int = 1000) -> Optional[dict]:
+async def get_request_body(request: Request, max_size: int = 1000) -> dict | None:
     try:
         content_type = request.headers.get("content-type", "")
         if "application/json" not in content_type:
@@ -66,7 +67,11 @@ async def get_request_body(request: Request, max_size: int = 1000) -> Optional[d
 
 
 class AccessLogMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+    async def dispatch(
+        self,
+        request: Request,
+        call_next: Callable[[Request], Awaitable[Response]],
+    ) -> Response:
         start_time = time.perf_counter()
         method = request.method
         path = request.url.path
@@ -86,7 +91,7 @@ class AccessLogMiddleware(BaseHTTPMiddleware):
             request_body = await get_request_body(request, settings.log_request_body_max_size)
 
         try:
-            response = await call_next(request)
+            response = cast(Response, await call_next(request))
             status = response.status_code
             duration_ms = (time.perf_counter() - start_time) * 1000
             log_level = "info"

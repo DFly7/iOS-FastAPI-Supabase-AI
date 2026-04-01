@@ -28,13 +28,15 @@ let project = Project(
                 "PostHogAPIKey": "$(POSTHOG_API_KEY)",
                 "PostHogHost": "$(POSTHOG_HOST)",
                 "PostHogEnabled": "$(POSTHOG_ENABLED)",
-                // Supabase auth deep-link redirect scheme
-                // Keep this in sync with APIConfig.authRedirectScheme in Swift
+                // Supabase auth deep-link redirect scheme.
+                // Uses PRODUCT_BUNDLE_IDENTIFIER so renaming the app bundle
+                // automatically keeps the scheme in sync. APIConfig reads this
+                // at runtime from CFBundleURLTypes — no hardcoded value in Swift.
                 "CFBundleURLTypes": .array([
                     .dictionary([
                         "CFBundleTypeRole": "Editor",
-                        "CFBundleURLName": "com.example.starter",
-                        "CFBundleURLSchemes": .array(["com.example.starter"]),
+                        "CFBundleURLName": "$(PRODUCT_BUNDLE_IDENTIFIER)",
+                        "CFBundleURLSchemes": .array(["$(PRODUCT_BUNDLE_IDENTIFIER)"]),
                     ]),
                 ]),
                 "UIApplicationSceneManifest": .dictionary([

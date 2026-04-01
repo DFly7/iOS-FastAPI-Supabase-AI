@@ -1,25 +1,24 @@
 import Foundation
 
-/// Calls the FastAPI backend using the same JWT Supabase issued to the app (`Authorization: Bearer …`).
+/// Calls the FastAPI backend using the Supabase JWT (`Authorization: Bearer …`).
 enum BackendAPIService {
-    /// Shared decoder for all backend responses.
-    /// - dateDecodingStrategy: FastAPI serialises `datetime` fields as ISO 8601 strings
-    ///   (e.g. "2026-03-31T12:00:00Z"). Without this the decoder throws on any `Date` property.
+
+    // MARK: - Shared codecs
+
+    /// FastAPI serialises `datetime` fields as ISO 8601 strings; the decoder must match.
     private static let decoder: JSONDecoder = {
         let d = JSONDecoder()
         d.dateDecodingStrategy = .iso8601
         return d
     }()
 
-    struct SecureTestResponse: Decodable, Equatable {
-        let message: String
-        let userId: String?
+    private static let encoder: JSONEncoder = {
+        let e = JSONEncoder()
+        e.dateEncodingStrategy = .iso8601
+        return e
+    }()
 
-        enum CodingKeys: String, CodingKey {
-            case message
-            case userId = "user_id"
-        }
-    }
+    // MARK: - Errors
 
     enum ServiceError: LocalizedError {
         case noAccessToken
@@ -38,16 +37,34 @@ enum BackendAPIService {
         }
     }
 
-    private static func dataForAuthorizedGET(path: String, accessToken: String?) async throws -> Data {
+    // MARK: - Core request helper
+
+    /// Executes an authorized HTTP request and returns the raw response `Data`.
+    ///
+    /// - Parameters:
+    ///   - method: HTTP method string ("GET", "POST", "PATCH", "DELETE", …).
+    ///   - path: Path relative to `APIConfig.backendURL` (e.g. `"api/v1/me/profile"`).
+    ///   - bodyData: Already-encoded JSON body, or `nil` for requests without a body.
+    ///   - accessToken: Supabase JWT; throws `ServiceError.noAccessToken` when absent.
+    private static func request(
+        method: String,
+        path: String,
+        bodyData: Data? = nil,
+        accessToken: String?
+    ) async throws -> Data {
         guard let accessToken, !accessToken.isEmpty else {
             throw ServiceError.noAccessToken
         }
 
-        var request = URLRequest(url: APIConfig.backendURL.appending(path: path))
-        request.httpMethod = "GET"
-        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+        var urlRequest = URLRequest(url: APIConfig.backendURL.appending(path: path))
+        urlRequest.httpMethod = method
+        urlRequest.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+        if let bodyData {
+            urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            urlRequest.httpBody = bodyData
+        }
 
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await URLSession.shared.data(for: urlRequest)
         let status = (response as? HTTPURLResponse)?.statusCode ?? -1
         guard (200 ... 299).contains(status) else {
             let body = String(data: data, encoding: .utf8)
@@ -56,15 +73,81 @@ enum BackendAPIService {
         return data
     }
 
-    @MainActor
+    // MARK: - Auth / demo
+
+    struct SecureTestResponse: Decodable, Equatable {
+        let message: String
+        let userId: String?
+
+        enum CodingKeys: String, CodingKey {
+            case message
+            case userId = "user_id"
+        }
+    }
+
     static func fetchSecureTest(accessToken: String?) async throws -> SecureTestResponse {
-        let data = try await dataForAuthorizedGET(path: "api/v1/secure-test", accessToken: accessToken)
+        let data = try await request(method: "GET", path: "api/v1/secure-test", accessToken: accessToken)
         return try decoder.decode(SecureTestResponse.self, from: data)
     }
 
-    @MainActor
+    // MARK: - Profile
+
     static func fetchMyProfile(accessToken: String?) async throws -> ProfileOut {
-        let data = try await dataForAuthorizedGET(path: "api/v1/me/profile", accessToken: accessToken)
+        let data = try await request(method: "GET", path: "api/v1/me/profile", accessToken: accessToken)
         return try decoder.decode(ProfileOut.self, from: data)
+    }
+
+    /// PATCH /api/v1/me/profile — only non-nil fields are sent so the server only updates those columns.
+    static func updateMyProfile(
+        displayName: String? = nil,
+        avatarUrl: String? = nil,
+        accessToken: String?
+    ) async throws -> ProfileOut {
+        let payload = ProfileUpdate(displayName: displayName, avatarUrl: avatarUrl)
+        let body = try encoder.encode(payload)
+        let data = try await request(method: "PATCH", path: "api/v1/me/profile", bodyData: body, accessToken: accessToken)
+        return try decoder.decode(ProfileOut.self, from: data)
+    }
+
+    // MARK: - Notes
+
+    static func fetchNotes(accessToken: String?) async throws -> [NoteOut] {
+        let data = try await request(method: "GET", path: "api/v1/me/notes", accessToken: accessToken)
+        return try decoder.decode([NoteOut].self, from: data)
+    }
+
+    /// POST /api/v1/me/notes — returns the created note with its server-assigned id and timestamps.
+    static func createNote(title: String, body: String? = nil, accessToken: String?) async throws -> NoteOut {
+        let payload = NoteIn(title: title, body: body)
+        let bodyData = try encoder.encode(payload)
+        let data = try await request(method: "POST", path: "api/v1/me/notes", bodyData: bodyData, accessToken: accessToken)
+        return try decoder.decode(NoteOut.self, from: data)
+    }
+
+    /// PATCH /api/v1/me/notes/{id} — only supplied fields are changed.
+    static func updateNote(
+        id: UUID,
+        title: String? = nil,
+        body: String? = nil,
+        accessToken: String?
+    ) async throws -> NoteOut {
+        let payload = NoteUpdate(title: title, body: body)
+        let bodyData = try encoder.encode(payload)
+        let data = try await request(
+            method: "PATCH",
+            path: "api/v1/me/notes/\(id.uuidString.lowercased())",
+            bodyData: bodyData,
+            accessToken: accessToken
+        )
+        return try decoder.decode(NoteOut.self, from: data)
+    }
+
+    /// DELETE /api/v1/me/notes/{id} — server returns 204 No Content on success.
+    static func deleteNote(id: UUID, accessToken: String?) async throws {
+        _ = try await request(
+            method: "DELETE",
+            path: "api/v1/me/notes/\(id.uuidString.lowercased())",
+            accessToken: accessToken
+        )
     }
 }

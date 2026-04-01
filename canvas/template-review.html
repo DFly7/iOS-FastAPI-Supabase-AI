@@ -1,0 +1,1265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>iOS · FastAPI · Supabase — Template Review v2</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=JetBrains+Mono:wght@400;600&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #07080d;
+    --bg2: #0d0f17;
+    --bg3: #12151f;
+    --border: rgba(255,255,255,0.07);
+    --green: #00e887;
+    --amber: #ffb300;
+    --red: #ff4757;
+    --blue: #3d8bff;
+    --purple: #a855f7;
+    --text: #e8eaf0;
+    --muted: #5a6070;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Header ── */
+  .header {
+    padding: 56px 48px 44px;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+  }
+  .header::before {
+    content: '';
+    position: absolute;
+    top: -80px; left: -40px;
+    width: 600px; height: 400px;
+    background: radial-gradient(ellipse, rgba(0,232,135,0.07) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .header-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+    opacity: 0;
+    animation: fadeUp 0.5s ease 0.1s forwards;
+  }
+  .header-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--green);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+  .version-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: rgba(0,232,135,0.1);
+    color: var(--green);
+    border: 1px solid rgba(0,232,135,0.25);
+  }
+  .header h1 {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: clamp(30px, 4.5vw, 52px);
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+    opacity: 0;
+    animation: fadeUp 0.5s ease 0.2s forwards;
+  }
+  .header h1 span { color: var(--green); }
+  .header-sub {
+    margin-top: 12px;
+    color: var(--muted);
+    font-size: 14px;
+    max-width: 580px;
+    opacity: 0;
+    animation: fadeUp 0.5s ease 0.3s forwards;
+  }
+
+  /* ── Delta strip ── */
+  .delta-strip {
+    margin-top: 28px;
+    padding: 14px 20px;
+    background: rgba(0,232,135,0.05);
+    border: 1px solid rgba(0,232,135,0.15);
+    border-radius: 10px;
+    max-width: 720px;
+    font-size: 13px;
+    color: #9aefca;
+    opacity: 0;
+    animation: fadeUp 0.5s ease 0.35s forwards;
+  }
+  .delta-strip strong { color: var(--green); font-weight: 600; }
+
+  /* ── Scores ── */
+  .scores-row {
+    display: flex;
+    gap: 16px;
+    margin-top: 32px;
+    flex-wrap: wrap;
+    opacity: 0;
+    animation: fadeUp 0.5s ease 0.45s forwards;
+  }
+  .score-pill {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 14px 18px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    min-width: 100px;
+  }
+  .score-pill .label { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+  .score-pill .val {
+    font-family: 'Syne', sans-serif;
+    font-size: 24px;
+    font-weight: 800;
+    line-height: 1;
+  }
+  .score-pill .delta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--green);
+    margin-top: 2px;
+  }
+  .score-pill .delta.same { color: var(--muted); }
+  .score-pill .bar-track {
+    height: 3px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 2px;
+    margin-top: 6px;
+    overflow: hidden;
+  }
+  .score-pill .bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 1s cubic-bezier(0.16, 1, 0.3, 1) 0.8s;
+    width: 0;
+  }
+
+  /* ── Nav ── */
+  .nav {
+    display: flex;
+    gap: 0;
+    padding: 0 48px;
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+    scrollbar-width: none;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(7,8,13,0.95);
+    backdrop-filter: blur(12px);
+  }
+  .nav::-webkit-scrollbar { display: none; }
+  .nav-btn {
+    padding: 13px 18px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--muted);
+    cursor: pointer;
+    border: none;
+    background: none;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+    white-space: nowrap;
+    font-family: 'Inter', sans-serif;
+  }
+  .nav-btn:hover { color: var(--text); }
+  .nav-btn.active { color: var(--green); border-bottom-color: var(--green); }
+
+  /* ── Content ── */
+  .content {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 44px 48px;
+  }
+  .section { display: none; }
+  .section.active { display: block; }
+
+  /* ── Section headings ── */
+  .section-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 26px;
+    letter-spacing: -0.02em;
+    margin-bottom: 6px;
+  }
+  .section-desc {
+    color: var(--muted);
+    font-size: 13.5px;
+    margin-bottom: 32px;
+    max-width: 620px;
+  }
+  .subsection-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--green);
+    margin-bottom: 10px;
+    margin-top: 32px;
+  }
+  .subsection-label:first-child { margin-top: 0; }
+
+  /* ── Grid ── */
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 28px;
+  }
+  .grid-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 28px;
+  }
+  @media (max-width: 750px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+
+  /* ── Card ── */
+  .card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    transition: background 0.2s;
+  }
+  .card:hover { background: var(--bg3); }
+  .card-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+  .card h3 {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    margin-bottom: 8px;
+  }
+  .card p { color: #8a92a2; font-size: 13px; line-height: 1.65; }
+
+  /* ── Issue items ── */
+  .issues-list {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    margin-bottom: 28px;
+  }
+  .issue-item {
+    display: flex;
+    gap: 13px;
+    align-items: flex-start;
+    padding: 14px 18px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    transition: background 0.2s;
+  }
+  .issue-item.resolved {
+    opacity: 0.5;
+    border-color: rgba(0,232,135,0.1);
+  }
+  .issue-item:hover { background: var(--bg3); }
+  .issue-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-top: 6px;
+  }
+  .dot-red { background: var(--red); box-shadow: 0 0 7px rgba(255,71,87,0.5); }
+  .dot-amber { background: var(--amber); box-shadow: 0 0 7px rgba(255,179,0,0.4); }
+  .dot-green { background: var(--green); box-shadow: 0 0 7px rgba(0,232,135,0.4); }
+  .dot-blue { background: var(--blue); box-shadow: 0 0 7px rgba(61,139,255,0.4); }
+  .dot-purple { background: var(--purple); box-shadow: 0 0 7px rgba(168,85,247,0.4); }
+  .issue-body { flex: 1; min-width: 0; }
+  .issue-title {
+    font-weight: 500;
+    font-size: 13px;
+    margin-bottom: 3px;
+    color: var(--text);
+  }
+  .issue-detail { font-size: 12.5px; color: var(--muted); line-height: 1.55; }
+  .issue-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 4px;
+    border: 1px solid;
+    flex-shrink: 0;
+    margin-top: 2px;
+    white-space: nowrap;
+  }
+  .tag-bug { color: var(--red); border-color: rgba(255,71,87,0.3); background: rgba(255,71,87,0.06); }
+  .tag-warn { color: var(--amber); border-color: rgba(255,179,0,0.3); background: rgba(255,179,0,0.06); }
+  .tag-good { color: var(--green); border-color: rgba(0,232,135,0.3); background: rgba(0,232,135,0.06); }
+  .tag-idea { color: var(--blue); border-color: rgba(61,139,255,0.3); background: rgba(61,139,255,0.06); }
+  .tag-agent { color: var(--purple); border-color: rgba(168,85,247,0.3); background: rgba(168,85,247,0.06); }
+  .tag-fixed { color: #3d6a50; border-color: rgba(0,232,135,0.15); background: rgba(0,232,135,0.04); }
+
+  /* ── Code block ── */
+  .code-block {
+    background: #0b0d14;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px;
+    margin: 10px 0;
+    overflow-x: auto;
+  }
+  .code-block pre {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    line-height: 1.7;
+    color: #c8d0e8;
+    white-space: pre;
+  }
+  .kw { color: #a78bfa; }
+  .str { color: #6ee7b7; }
+  .cm { color: #3d4460; }
+  .fn { color: #60a5fa; }
+  .key { color: #f59e0b; }
+
+  /* ── Divider ── */
+  .divider { height: 1px; background: var(--border); margin: 36px 0; }
+
+  /* ── Priority list ── */
+  .priority-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 28px; }
+  .priority-item {
+    display: grid;
+    grid-template-columns: 26px 1fr auto;
+    gap: 14px;
+    align-items: start;
+    padding: 12px 16px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+  }
+  .priority-num {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 17px;
+    color: rgba(255,255,255,0.12);
+  }
+  .priority-text { font-size: 13px; line-height: 1.5; }
+  .priority-text strong { display: block; font-weight: 500; color: var(--text); margin-bottom: 3px; }
+  .priority-text span { color: var(--muted); font-size: 12px; }
+  .effort {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    white-space: nowrap;
+    margin-top: 2px;
+  }
+  .effort-low { background: rgba(0,232,135,0.1); color: var(--green); }
+  .effort-med { background: rgba(255,179,0,0.1); color: var(--amber); }
+  .effort-high { background: rgba(255,71,87,0.1); color: var(--red); }
+
+  /* ── Layer table ── */
+  .layer-table { width: 100%; border-collapse: collapse; margin-bottom: 28px; }
+  .layer-table th {
+    text-align: left;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 8px 14px;
+    border-bottom: 1px solid var(--border);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .layer-table td {
+    padding: 11px 14px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    font-size: 13px;
+    vertical-align: top;
+  }
+  .layer-table tr:last-child td { border-bottom: none; }
+  .layer-table tr:hover td { background: rgba(255,255,255,0.02); }
+  .r-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 2px; }
+
+  /* ── Diff compare ── */
+  .compare-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 10px;
+  }
+  .compare-card {
+    padding: 14px 16px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+  }
+  .compare-card.before { background: rgba(255,71,87,0.04); border-color: rgba(255,71,87,0.15); }
+  .compare-card.after { background: rgba(0,232,135,0.04); border-color: rgba(0,232,135,0.15); }
+  .compare-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .compare-card.before .compare-label { color: var(--red); }
+  .compare-card.after .compare-label { color: var(--green); }
+  .compare-card p { font-size: 12.5px; color: var(--muted); line-height: 1.55; }
+
+  /* ── Animations ── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── Tag row ── */
+  .tag-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+  .badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    padding: 3px 9px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    color: var(--muted);
+  }
+
+  /* ── Notice box ── */
+  .notice {
+    padding: 14px 18px;
+    border-radius: 10px;
+    font-size: 13px;
+    line-height: 1.6;
+    margin-bottom: 28px;
+  }
+  .notice-purple {
+    background: rgba(168,85,247,0.06);
+    border: 1px solid rgba(168,85,247,0.2);
+    color: #c4a8f0;
+  }
+  .notice-blue {
+    background: rgba(61,139,255,0.06);
+    border: 1px solid rgba(61,139,255,0.2);
+    color: #8bb8ff;
+  }
+</style>
+</head>
+<body>
+
+<!-- ── HEADER ── -->
+<div class="header">
+  <div class="header-meta">
+    <span class="header-label">Template Review</span>
+    <span class="version-badge">v2 · April 2026</span>
+  </div>
+  <h1>iOS · FastAPI · Supabase<br><span>Re-Review After Improvements</span></h1>
+  <div class="header-sub">Second-pass audit. Covers DX, Usability, Conventions, CI/CD, and Agent-readiness after a major iteration cycle.</div>
+
+  <div class="delta-strip">
+    <strong>What changed since v1:</strong> README fixed, typos cleaned, ruff + mypy + SwiftLint added, PATCH /me/profile, full Notes CRUD (GET / POST / PATCH / DELETE), @Observable ViewModel, ErrorBanner, NoteOut+Identifiable, dynamic UDID resolution, Docker layer caching, concurrency controls, lint → test → check-models CI job chain, coverage reporting. <strong>17+ discrete improvements.</strong>
+  </div>
+
+  <div class="scores-row" id="scoreRow">
+    <div class="score-pill">
+      <span class="label">DX</span>
+      <span class="val" style="color:var(--green)">9/10</span>
+      <span class="delta">↑ was 8</span>
+      <div class="bar-track"><div class="bar-fill" style="background:var(--green)" data-pct="90"></div></div>
+    </div>
+    <div class="score-pill">
+      <span class="label">Usability</span>
+      <span class="val" style="color:var(--green)">9/10</span>
+      <span class="delta">↑↑ was 7</span>
+      <div class="bar-track"><div class="bar-fill" style="background:var(--green)" data-pct="90"></div></div>
+    </div>
+    <div class="score-pill">
+      <span class="label">Conventions</span>
+      <span class="val" style="color:var(--green)">9/10</span>
+      <span class="delta">↑ was 8</span>
+      <div class="bar-track"><div class="bar-fill" style="background:var(--green)" data-pct="90"></div></div>
+    </div>
+    <div class="score-pill">
+      <span class="label">CI / CD</span>
+      <span class="val" style="color:var(--green)">9/10</span>
+      <span class="delta">↑↑ was 7</span>
+      <div class="bar-track"><div class="bar-fill" style="background:var(--green)" data-pct="90"></div></div>
+    </div>
+    <div class="score-pill">
+      <span class="label">Agent-Ready</span>
+      <span class="val" style="color:var(--red)">2/10</span>
+      <span class="delta same">intentional</span>
+      <div class="bar-track"><div class="bar-fill" style="background:var(--red)" data-pct="20"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── NAV ── -->
+<nav class="nav" id="mainNav">
+  <button class="nav-btn active" data-tab="overview">Overview</button>
+  <button class="nav-btn" data-tab="dx">DX</button>
+  <button class="nav-btn" data-tab="usability">Usability</button>
+  <button class="nav-btn" data-tab="conventions">Conventions</button>
+  <button class="nav-btn" data-tab="cicd">CI / CD</button>
+  <button class="nav-btn" data-tab="agent">Agent-ification</button>
+  <button class="nav-btn" data-tab="remaining">Remaining</button>
+</nav>
+
+<div class="content">
+
+  <!-- ════════════════════ OVERVIEW ════════════════════ -->
+  <div class="section active" id="tab-overview">
+    <div class="section-title">State of the template</div>
+    <div class="section-desc">This is now a genuinely excellent foundation. The jump from v1 to v2 is substantial — you've addressed every critical gap except the intentionally-deferred agent-ification work.</div>
+
+    <table class="layer-table">
+      <thead>
+        <tr>
+          <th>Layer</th>
+          <th>Key additions since v1</th>
+          <th>Quality now</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>iOS App</strong></td>
+          <td>@Observable ViewModel, ErrorBanner, full Notes CRUD UI, inline PATCH profile form, NoteOut+Identifiable, authRedirectScheme from bundle, AppLog used throughout, SwiftLint config</td>
+          <td>
+            <div style="display:flex;gap:3px;">
+              <span class="r-dot" style="background:var(--green)"></span>
+              <span class="r-dot" style="background:var(--green)"></span>
+              <span class="r-dot" style="background:var(--green)"></span>
+              <span class="r-dot" style="background:var(--green)"></span>
+              <span class="r-dot" style="background:var(--amber)"></span>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td><strong>FastAPI Backend</strong></td>
+          <td>Full Notes CRUD router (GET, POST, PATCH, DELETE + 201/204), PATCH /me/profile, feature sub-router include pattern shown, ProfileUpdate schema, NoteIn field validation</td>
+          <td>
+            <div style="display:flex;gap:3px;">
+              <span class="r-dot" style="background:var(--green)"></span>
+              <span class="r-dot" style="background:var(--green)"></span>
+              <span class="r-dot" style="background:var(--green)"></span>
+              <span class="r-dot" style="background:var(--green)"></span>
+              <span class="r-dot" style="background:var(--green)"></span>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td><strong>Supabase</strong></td>
+          <td>Notes migration with RLS (all 4 ops), user_id index, updated_at trigger, table comment, second versioned migration</td>
+          <td>
+            <div style="display:flex;gap:3px;">
+              <span class="r-dot" style="background:var(--green)"></span>
+              <span class="r-dot" style="background:var(--green)"></span>
+              <span class="r-dot" style="background:var(--green)"></span>
+              <span class="r-dot" style="background:var(--green)"></span>
+              <span class="r-dot" style="background:var(--green)"></span>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td><strong>Tests</strong></td>
+          <td>Integration test suite for full notes CRUD (7 tests, all ops verified), test_health.py, test_v1_ping.py added</td>
+          <td>
+            <div style="display:flex;gap:3px;">
+              <span class="r-dot" style="background:var(--green)"></span>
+              <span class="r-dot" style="background:var(--green)"></span>
+              <span class="r-dot" style="background:var(--green)"></span>
+              <span class="r-dot" style="background:var(--green)"></span>
+              <span class="r-dot" style="background:rgba(255,255,255,0.1)"></span>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td><strong>CI / CD</strong></td>
+          <td>Lint job (ruff + mypy), test depends on lint, coverage to Step Summary, Docker GHA cache, concurrency keys on all workflows, SwiftLint in iOS CI, Tuist dependency cache, dynamic UDID resolution</td>
+          <td>
+            <div style="display:flex;gap:3px;">
+              <span class="r-dot" style="background:var(--green)"></span>
+              <span class="r-dot" style="background:var(--green)"></span>
+              <span class="r-dot" style="background:var(--green)"></span>
+              <span class="r-dot" style="background:var(--green)"></span>
+              <span class="r-dot" style="background:var(--amber)"></span>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td><strong>Agent-readiness</strong></td>
+          <td>No change — intentionally deferred. No .cursor/rules, no AGENTS.md, no .agent/.</td>
+          <td>
+            <div style="display:flex;gap:3px;">
+              <span class="r-dot" style="background:var(--red)"></span>
+              <span class="r-dot" style="background:rgba(255,255,255,0.1)"></span>
+              <span class="r-dot" style="background:rgba(255,255,255,0.1)"></span>
+              <span class="r-dot" style="background:rgba(255,255,255,0.1)"></span>
+              <span class="r-dot" style="background:rgba(255,255,255,0.1)"></span>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="subsection-label">Biggest new strengths</div>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-label">Full CRUD chain</div>
+        <h3>Notes: the teaching example the template needed</h3>
+        <p>notes_repo → notes_service → notes router → BackendAPIService → ContentViewModel → ContentView. Every layer is wired and visible. A user adding their second feature now has a complete reference to copy.</p>
+      </div>
+      <div class="card">
+        <div class="card-label">CI pipeline</div>
+        <h3>lint → test → check-models → docker</h3>
+        <p>Proper job dependency chain. Ruff and mypy gate tests. Coverage goes to GitHub Step Summary. Docker build caches with GHA. SwiftLint runs strict before Tuist. This is a real CI pipeline, not a placeholder.</p>
+      </div>
+      <div class="card">
+        <div class="card-label">iOS Patterns</div>
+        <h3>@Observable ViewModel + ErrorBanner</h3>
+        <p>ContentViewModel uses iOS 17 @Observable macro. Every async call has loading state, error state, and retry. ErrorBanner is extracted as a reusable component. These patterns will copy forward into every screen a user builds.</p>
+      </div>
+      <div class="card">
+        <div class="card-label">Auth completeness</div>
+        <h3>Email + Apple + Google + Magic Link</h3>
+        <p>AuthView covers all four sign-in methods. AuthService handles session refresh, expired token recovery, PostHog identity, Keychain storage, and all auth state events. Uncommonly thorough for a template.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════ DX ════════════════════ -->
+  <div class="section" id="tab-dx">
+    <div class="section-title">Developer Experience</div>
+    <div class="section-desc">What's changed since v1 and what few friction points remain.</div>
+
+    <div class="subsection-label">Fixed since v1</div>
+    <div class="issues-list">
+      <div class="issue-item resolved">
+        <div class="issue-dot dot-green"></div>
+        <div class="issue-body">
+          <div class="issue-title">README now says <code>make dev</code></div>
+          <div class="issue-detail">Step 3 says "make dev" with a full explanation of what scripts/dev.sh does. Repo layout is accurate. <code>run.sh</code> / <code>build-run.sh</code> references gone.</div>
+        </div>
+        <span class="issue-tag tag-fixed">fixed</span>
+      </div>
+      <div class="issue-item resolved">
+        <div class="issue-dot dot-green"></div>
+        <div class="issue-body">
+          <div class="issue-title">Typos gone: <code>.cusror/</code> removed, <code>ios/REAMME.md</code> → <code>ios/README.md</code></div>
+          <div class="issue-detail">Root is clean. ios/README.md is now properly filled out with quick-start and Xcode-only instructions.</div>
+        </div>
+        <span class="issue-tag tag-fixed">fixed</span>
+      </div>
+      <div class="issue-item resolved">
+        <div class="issue-dot dot-green"></div>
+        <div class="issue-body">
+          <div class="issue-title">ruff + mypy added to pyproject.toml and CI</div>
+          <div class="issue-detail">Full [tool.ruff], [tool.ruff.lint], [tool.mypy] config. B008 correctly ignored for app/** (FastAPI Depends). Lint job runs before tests.</div>
+        </div>
+        <span class="issue-tag tag-fixed">fixed</span>
+      </div>
+      <div class="issue-item resolved">
+        <div class="issue-dot dot-green"></div>
+        <div class="issue-body">
+          <div class="issue-title">SwiftLint added (.swiftlint.yml + CI step)</div>
+          <div class="issue-detail">GeneratedModels.swift correctly excluded. Tuist manifests excluded. Reasonable thresholds (120 line length warning, 400 type body). CI runs with --strict.</div>
+        </div>
+        <span class="issue-tag tag-fixed">fixed</span>
+      </div>
+    </div>
+
+    <div class="subsection-label">Remaining</div>
+    <div class="issues-list">
+      <div class="issue-item">
+        <div class="issue-dot dot-amber"></div>
+        <div class="issue-body">
+          <div class="issue-title">No CONTRIBUTING.md or conventions doc</div>
+          <div class="issue-detail">No file explaining naming conventions, branch strategy, how to add a route, migration naming format, or Swift style decisions. The <code>notes/</code> folder and README cover a lot, but there's no single "conventions for contributors" reference. Low priority since this is a personal template, but worth adding if you open-source it.</div>
+        </div>
+        <span class="issue-tag tag-warn">minor</span>
+      </div>
+      <div class="issue-item">
+        <div class="issue-dot dot-amber"></div>
+        <div class="issue-body">
+          <div class="issue-title">SwiftLint installs via <code>brew install swiftlint</code> in CI — slow</div>
+          <div class="issue-detail">This adds ~40–60s to iOS CI on each run (no cache). The <code>actions/cache@v4</code> for Tuist is already set up — SwiftLint's binary could be cached similarly, or the <code>norio-nomura/action-swiftlint</code> GitHub Action used instead.</div>
+        </div>
+        <span class="issue-tag tag-idea">optimise</span>
+      </div>
+      <div class="issue-item">
+        <div class="issue-dot dot-blue"></div>
+        <div class="issue-body">
+          <div class="issue-title"><code>make dev</code> README step says "Fill in SUPABASE_PUBLIC_ANON_KEY after step 3"</div>
+          <div class="issue-detail">The README says to <code>cp backend/.env.example backend/.env</code> and fill in the anon key "after step 3". But <code>make dev</code> auto-injects it from <code>supabase status</code> when it runs. This is a minor mislead — it works fine without manually editing .env first.</div>
+        </div>
+        <span class="issue-tag tag-idea">clarity</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════ USABILITY ════════════════════ -->
+  <div class="section" id="tab-usability">
+    <div class="section-title">Template Usability</div>
+    <div class="section-desc">This is where the biggest improvement happened. The template now shows the full pattern a user needs to build any feature.</div>
+
+    <div class="subsection-label">Before → After: key improvements</div>
+    <div class="compare-row">
+      <div class="compare-card before">
+        <div class="compare-label">v1 — before</div>
+        <p>Only GET endpoints. No mutation example. Placeholder repo/service with no real impl. ContentView calling API directly. No error or loading states. Single-screen with one call.</p>
+      </div>
+      <div class="compare-card after">
+        <div class="compare-label">v2 — now</div>
+        <p>Full CRUD: GET (list + single), POST (201), PATCH (both profile + notes), DELETE (204). Real repo + service layers. @Observable ViewModel. Per-call loading, error banners with retry.</p>
+      </div>
+    </div>
+    <div class="compare-row">
+      <div class="compare-card before">
+        <div class="compare-label">v1 — before</div>
+        <p>authRedirectScheme hardcoded as "com.example.starter" in Swift. Silent auth breakage when renaming the app.</p>
+      </div>
+      <div class="compare-card after">
+        <div class="compare-label">v2 — now</div>
+        <p>authRedirectScheme reads CFBundleURLSchemes from Info.plist, which derives from PRODUCT_BUNDLE_IDENTIFIER via xcconfig. Rename the app once and all redirect URLs follow.</p>
+      </div>
+    </div>
+
+    <div class="subsection-label">New strengths</div>
+    <div class="issues-list">
+      <div class="issue-item">
+        <div class="issue-dot dot-green"></div>
+        <div class="issue-body">
+          <div class="issue-title">notes_service.py comment is perfect for template users</div>
+          <div class="issue-detail">"Services orchestrate one or more repositories and contain business logic. Keep repository calls here so routers stay thin (validate input → call service → return schema)." This one-liner teaches the pattern without over-engineering it.</div>
+        </div>
+        <span class="issue-tag tag-good">strength</span>
+      </div>
+      <div class="issue-item">
+        <div class="issue-dot dot-green"></div>
+        <div class="issue-body">
+          <div class="issue-title"><code>NoteOut+Identifiable.swift</code> — the right place to extend generated models</div>
+          <div class="issue-detail">Extending generated code in a separate file instead of editing the generated file is exactly right. The comment explains why. This is the kind of micro-convention a template should model.</div>
+        </div>
+        <span class="issue-tag tag-good">strength</span>
+      </div>
+      <div class="issue-item">
+        <div class="issue-dot dot-green"></div>
+        <div class="issue-body">
+          <div class="issue-title">notes_repo.py: <code>_SELECT</code> constant + dual <code>.eq("user_id")</code> guard</div>
+          <div class="issue-detail">The <code>_SELECT = "id, user_id, title, body, created_at, updated_at"</code> constant avoids column drift. Every mutating query also guards on <code>user_id</code> alongside the RLS policy — defense-in-depth that's worth copying.</div>
+        </div>
+        <span class="issue-tag tag-good">strength</span>
+      </div>
+      <div class="issue-item">
+        <div class="issue-dot dot-green"></div>
+        <div class="issue-body">
+          <div class="issue-title">AuthService: <code>userFacingMessage</code> error mapping</div>
+          <div class="issue-detail">Maps Supabase SDK raw error strings to user-friendly copy. Handles Apple Sign In cancellation, URLError network codes, and a comprehensive set of Supabase auth error substrings. This function alone saves hours when building a real app.</div>
+        </div>
+        <span class="issue-tag tag-good">strength</span>
+      </div>
+    </div>
+
+    <div class="subsection-label">Remaining gaps</div>
+    <div class="issues-list">
+      <div class="issue-item">
+        <div class="issue-dot dot-amber"></div>
+        <div class="issue-body">
+          <div class="issue-title">No note edit UI — PATCH /me/notes/{id} not exercised on iOS</div>
+          <div class="issue-detail">The backend, repo, service, and iOS service method for PATCH note exist, but ContentView only shows create and delete. The inline PATCH edit pattern demonstrated for profile isn't shown for notes. Minor — the backend proves it — but a user will have to infer the iOS pattern.</div>
+        </div>
+        <span class="issue-tag tag-idea">nice-to-have</span>
+      </div>
+      <div class="issue-item">
+        <div class="issue-dot dot-amber"></div>
+        <div class="issue-body">
+          <div class="issue-title">No unit tests for notes endpoints (only integration)</div>
+          <div class="issue-detail">tests/api/ has test_auth_routes.py, test_health.py, test_v1_ping.py but no test_notes_routes.py. Notes is only tested end-to-end via integration tests against a live Supabase. A mocked unit test for the notes router would complete the test story.</div>
+        </div>
+        <span class="issue-tag tag-warn">missing</span>
+      </div>
+      <div class="issue-item">
+        <div class="issue-dot dot-amber"></div>
+        <div class="issue-body">
+          <div class="issue-title">Integration tests share state via <code>test_credentials</code> dict mutation</div>
+          <div class="issue-detail"><code>test_create_note_returns_201</code> sets <code>test_credentials["note_id"]</code> which subsequent tests read. Pytest doesn't guarantee order by default (it uses file order in practice, so it works). A <code>@pytest.fixture</code> with <code>scope="module"</code> returning the created note id would be more robust and idiomatic. Also: test_notes_flow and test_profile_flow may share the same <code>test_credentials</code> fixture — verify there's no cross-test pollution.</div>
+        </div>
+        <span class="issue-tag tag-warn">pattern</span>
+      </div>
+      <div class="issue-item">
+        <div class="issue-dot dot-blue"></div>
+        <div class="issue-body">
+          <div class="issue-title"><code>notes_service.py</code> is currently a thin passthrough</div>
+          <div class="issue-detail">Every function just calls the matching repo function. Right now the service layer adds no value for notes. This is fine — the structure exists for future business logic — but worth noting in a template comment. Something like "add business rules here, e.g. enforce a max notes per user limit" would show users when to put logic in service vs repo.</div>
+        </div>
+        <span class="issue-tag tag-idea">suggestion</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════ CONVENTIONS ════════════════════ -->
+  <div class="section" id="tab-conventions">
+    <div class="section-title">Skeleton Code Conventions</div>
+    <div class="section-desc">The patterns in the skeleton code are now genuinely good. Here's what's excellent and what's still worth polishing.</div>
+
+    <div class="subsection-label">Python / FastAPI — what's excellent</div>
+    <div class="issues-list">
+      <div class="issue-item">
+        <div class="issue-dot dot-green"></div>
+        <div class="issue-body">
+          <div class="issue-title">Feature sub-router pattern is demonstrated live</div>
+          <div class="issue-detail">Notes router lives in <code>api/v1/notes.py</code>, imported and included in the main router. The commented example at the bottom (<code># from app.api.v1.invoices import router as invoices_router</code>) shows exactly how to add the next one. This was the key structural gap in v1.</div>
+        </div>
+        <span class="issue-tag tag-good">strength</span>
+      </div>
+      <div class="issue-item">
+        <div class="issue-dot dot-green"></div>
+        <div class="issue-body">
+          <div class="issue-title">Status codes used correctly: 201 on POST, 204 on DELETE</div>
+          <div class="issue-detail"><code>status_code=status.HTTP_201_CREATED</code> on create, <code>HTTP_204_NO_CONTENT</code> on delete, explicit 404 raises in both single-resource endpoints. Many templates get this wrong by returning 200 everywhere.</div>
+        </div>
+        <span class="issue-tag tag-good">strength</span>
+      </div>
+      <div class="issue-item">
+        <div class="issue-dot dot-green"></div>
+        <div class="issue-body">
+          <div class="issue-title">NoteIn validates fields at the schema layer</div>
+          <div class="issue-detail"><code>title: str = Field(..., min_length=1, max_length=255)</code> — FastAPI returns 422 automatically if validation fails, with a structured error body. The DB has a matching <code>check (char_length(title) between 1 and 255)</code>. Defense at both layers.</div>
+        </div>
+        <span class="issue-tag tag-good">strength</span>
+      </div>
+      <div class="issue-item">
+        <div class="issue-dot dot-green"></div>
+        <div class="issue-body">
+          <div class="issue-title">PATCH semantics done correctly in both profile and notes</div>
+          <div class="issue-detail"><code>model_dump(exclude_none=True)</code> means only explicitly provided fields are sent to the DB. Profile additionally rejects an empty body with 422. Notes handles the no-change case by returning the existing row. Correct PATCH semantics throughout.</div>
+        </div>
+        <span class="issue-tag tag-good">strength</span>
+      </div>
+    </div>
+
+    <div class="subsection-label">Python — nuances worth knowing</div>
+    <div class="issues-list">
+      <div class="issue-item">
+        <div class="issue-dot dot-amber"></div>
+        <div class="issue-body">
+          <div class="issue-title">All route handlers are <code>def</code> not <code>async def</code></div>
+          <div class="issue-detail">The Supabase Python client is synchronous, so sync handlers are correct and avoid FastAPI running them in a thread pool. But the template doesn't show any async I/O pattern. When a user adds an <code>httpx</code> call or a second async client, they won't know to use <code>async def</code>. A brief note in the router or README would help.</div>
+        </div>
+        <span class="issue-tag tag-idea">note</span>
+      </div>
+      <div class="issue-item">
+        <div class="issue-dot dot-amber"></div>
+        <div class="issue-body">
+          <div class="issue-title">Router has mixed inline routes + included sub-router</div>
+          <div class="issue-detail">Notes is a proper sub-router in its own file. Profile GET + PATCH are inline in router.py. This isn't wrong — showing both patterns is educational — but a new contributor might not know which convention to follow when adding feature #2. A brief comment like "prefer feature sub-routers for non-trivial routes" would guide the decision.</div>
+        </div>
+        <span class="issue-tag tag-idea">clarity</span>
+      </div>
+    </div>
+
+    <div class="subsection-label">iOS / Swift — what's excellent</div>
+    <div class="issues-list">
+      <div class="issue-item">
+        <div class="issue-dot dot-green"></div>
+        <div class="issue-body">
+          <div class="issue-title">@Observable ContentViewModel with correct @State ownership</div>
+          <div class="issue-detail"><code>@State private var viewModel = ContentViewModel()</code> — using @State with @Observable is the iOS 17 way. ViewModels don't need to be ObservableObject anymore. Every property is tracked granularly.</div>
+        </div>
+        <span class="issue-tag tag-good">strength</span>
+      </div>
+      <div class="issue-item">
+        <div class="issue-dot dot-green"></div>
+        <div class="issue-body">
+          <div class="issue-title">ObservableObject for AuthService is still correct</div>
+          <div class="issue-detail">AuthService uses <code>ObservableObject</code> (old pattern) because it's injected as <code>@EnvironmentObject</code> which still requires it. Using @Observable for a service shared via environment would require different injection. This mixing is correct, not inconsistent.</div>
+        </div>
+        <span class="issue-tag tag-good">strength</span>
+      </div>
+      <div class="issue-item">
+        <div class="issue-dot dot-green"></div>
+        <div class="issue-body">
+          <div class="issue-title">UI-only state stays in the View, not the ViewModel</div>
+          <div class="issue-detail">The comment "Local UI-only state — purely presentational, not part of the model" in ContentView.swift is correct. <code>isEditingDisplayName</code>, <code>isShowingNoteComposer</code> etc. are view concerns. ViewModel owns async state. The separation is principled and annotated.</div>
+        </div>
+        <span class="issue-tag tag-good">strength</span>
+      </div>
+      <div class="issue-item">
+        <div class="issue-dot dot-green"></div>
+        <div class="issue-body">
+          <div class="issue-title">BackendAPIService has proper error type + shared codecs</div>
+          <div class="issue-detail"><code>ServiceError: LocalizedError</code> with <code>noAccessToken</code> and <code>unexpectedStatus(Int, String?)</code>. Shared <code>decoder/encoder</code> singletons with ISO 8601 dates. The <code>request()</code> core helper eliminates code duplication across all endpoints.</div>
+        </div>
+        <span class="issue-tag tag-good">strength</span>
+      </div>
+    </div>
+
+    <div class="subsection-label">iOS — minor remaining gaps</div>
+    <div class="issues-list">
+      <div class="issue-item">
+        <div class="issue-dot dot-amber"></div>
+        <div class="issue-body">
+          <div class="issue-title"><code>accessToken</code> passed to every ViewModel method as a parameter</div>
+          <div class="issue-detail">Every <code>viewModel.fetchNotes(accessToken: authService.accessToken)</code> passes the token explicitly. This is clear and decoupled — but it means every new ViewModel method needs the parameter. An alternative would be to inject <code>AuthService</code> into the ViewModel at init. Both are valid; the current approach is arguably simpler for a template.</div>
+        </div>
+        <span class="issue-tag tag-idea">pattern</span>
+      </div>
+      <div class="issue-item">
+        <div class="issue-dot dot-amber"></div>
+        <div class="issue-body">
+          <div class="issue-title">ContentView.swift is 318 lines and growing</div>
+          <div class="issue-detail">Within SwiftLint's file_length warning (600) but the trend is clear — each new feature adds ~60 lines. The view is doing secure test + profile + notes. When a third data entity arrives it'll push 400+. Splitting into NotesSection.swift and ProfileSection.swift as separate view structs would model the right habit.</div>
+        </div>
+        <span class="issue-tag tag-idea">future</span>
+      </div>
+    </div>
+
+    <div class="subsection-label">Migration conventions</div>
+    <div class="issues-list">
+      <div class="issue-item">
+        <div class="issue-dot dot-green"></div>
+        <div class="issue-body">
+          <div class="issue-title">Second migration is exemplary SQL</div>
+          <div class="issue-detail">Notes migration has: correct column types, NOT NULL constraints, CHECK constraint matching Pydantic field validation, index on <code>user_id</code>, RLS for all 4 operations, updated_at trigger function, and a <code>COMMENT ON TABLE</code>. This is a proper template for every future migration.</div>
+        </div>
+        <span class="issue-tag tag-good">strength</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════ CI/CD ════════════════════ -->
+  <div class="section" id="tab-cicd">
+    <div class="section-title">CI / CD</div>
+    <div class="section-desc">The CI pipeline is now genuinely good. The lint-first pattern, coverage reporting, and dynamic UDID are all production-grade.</div>
+
+    <div class="subsection-label">What's excellent now</div>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-label">backend-ci.yml</div>
+        <h3>lint → test → check-models → docker</h3>
+        <p>Proper dependency chain. <code>needs: lint</code> on test job. <code>needs: test</code> on both check-models and docker-build. Lint failure blocks tests. Test failure blocks Docker push. Exactly right.</p>
+      </div>
+      <div class="card">
+        <div class="card-label">Coverage</div>
+        <h3>GitHub Step Summary</h3>
+        <p>Coverage report written to <code>$GITHUB_STEP_SUMMARY</code> as a markdown code block. Visible on every CI run in GitHub Actions UI without needing a third-party service. Elegant.</p>
+      </div>
+      <div class="card">
+        <div class="card-label">ios-ci.yml</div>
+        <h3>Dynamic UDID via Python JSON</h3>
+        <p>Resolves iPhone 16 UDID by querying <code>xcrun simctl list</code> and sorting by runtime version. Picks the newest iOS. Much more robust than a hardcoded UDID.</p>
+      </div>
+      <div class="card">
+        <div class="card-label">All workflows</div>
+        <h3>Concurrency + Docker GHA cache</h3>
+        <p>Every workflow has a <code>concurrency:</code> key with cancel-in-progress. Docker uses <code>cache-from/to: type=gha,mode=max</code>. These are the two easiest wins that most CI setups miss.</p>
+      </div>
+    </div>
+
+    <div class="subsection-label">Remaining gaps</div>
+    <div class="issues-list">
+      <div class="issue-item">
+        <div class="issue-dot dot-amber"></div>
+        <div class="issue-body">
+          <div class="issue-title">SwiftLint installed via <code>brew install</code> on every run</div>
+          <div class="issue-detail">No cache for the SwiftLint binary. Each iOS CI run spends ~40–60s on <code>brew install swiftlint</code>. Fix: use <code>actions/cache@v4</code> to cache the Homebrew install dir, or use the <code>norio-nomura/action-swiftlint</code> or <code>realm/SwiftLint</code> actions which handle their own install.</div>
+        </div>
+        <span class="issue-tag tag-warn">perf</span>
+      </div>
+      <div class="issue-item">
+        <div class="issue-dot dot-amber"></div>
+        <div class="issue-body">
+          <div class="issue-title">No <code>timeout-minutes</code> on iOS CI job</div>
+          <div class="issue-detail">backend-integration.yml has <code>timeout-minutes: 15</code>. The iOS build job on macos-15 doesn't. Xcode builds can hang silently (e.g. waiting for a simulator to boot). A 30-minute timeout would prevent wasted runner minutes.</div>
+        </div>
+        <span class="issue-tag tag-warn">reliability</span>
+      </div>
+      <div class="issue-item">
+        <div class="issue-dot dot-amber"></div>
+        <div class="issue-body">
+          <div class="issue-title">xcpretty installed via <code>gem install</code> on every run</div>
+          <div class="issue-detail">Similar to SwiftLint — <code>gem install xcpretty --no-document</code> isn't cached. The macos-15 runner might have it pre-installed (check with <code>which xcpretty</code>), which would make this a no-op. Worth verifying and either caching or removing the install step.</div>
+        </div>
+        <span class="issue-tag tag-idea">optimise</span>
+      </div>
+      <div class="issue-item">
+        <div class="issue-dot dot-blue"></div>
+        <div class="issue-body">
+          <div class="issue-title">No UI test step in iOS CI</div>
+          <div class="issue-detail">ios-ci.yml runs <code>-only-testing:StarterAppTests</code> (unit tests). UI tests (<code>StarterAppUITests</code>) are scaffolded but not executed in CI. This is fine for now — UI tests are slow and require more setup — but worth noting as a future addition.</div>
+        </div>
+        <span class="issue-tag tag-idea">future</span>
+      </div>
+    </div>
+
+    <div class="subsection-label">SwiftLint caching fix</div>
+    <div class="code-block">
+      <pre><span class="cm"># ios-ci.yml — cache SwiftLint binary</span>
+<span class="key">- name:</span> Cache SwiftLint
+  <span class="key">uses:</span> actions/cache@v4
+  <span class="key">with:</span>
+    <span class="key">path:</span> <span class="str">/opt/homebrew/bin/swiftlint</span>
+    <span class="key">key:</span> <span class="str">swiftlint-${{ runner.os }}-${{ hashFiles('.swiftlint.yml') }}</span>
+
+<span class="key">- name:</span> Install SwiftLint (if not cached)
+  <span class="key">run:</span> <span class="str">which swiftlint || brew install swiftlint</span></pre>
+    </div>
+  </div>
+
+  <!-- ════════════════════ AGENT ════════════════════ -->
+  <div class="section" id="tab-agent">
+    <div class="section-title">Agent-ification Readiness</div>
+    <div class="section-desc">Intentionally not started yet — you're finishing the template first. This section captures the full blueprint for when you're ready.</div>
+
+    <div class="notice notice-purple">
+      Score stays 2/10 by design. The template needs to be solid before layering agent tooling on top. It now is. Everything below is your next sprint.
+    </div>
+
+    <div class="subsection-label">What's missing</div>
+    <div class="issues-list">
+      <div class="issue-item">
+        <div class="issue-dot dot-red"></div>
+        <div class="issue-body">
+          <div class="issue-title">No <code>.cursor/rules/</code> directory</div>
+          <div class="issue-detail">Every Cursor conversation starts from scratch. No project conventions, no key commands, no architecture context is auto-attached. This is the highest-leverage addition for an agent workflow.</div>
+        </div>
+        <span class="issue-tag tag-agent">agent</span>
+      </div>
+      <div class="issue-item">
+        <div class="issue-dot dot-red"></div>
+        <div class="issue-body">
+          <div class="issue-title">No <code>AGENTS.md</code></div>
+          <div class="issue-detail">No machine-readable project context. Read by Claude Code, Gemini CLI, Codex, Cursor agents. Should cover: architecture, key commands, conventions, where to put things.</div>
+        </div>
+        <span class="issue-tag tag-agent">agent</span>
+      </div>
+      <div class="issue-item">
+        <div class="issue-dot dot-red"></div>
+        <div class="issue-body">
+          <div class="issue-title">No <code>.agent/</code> directory with MCP configs or skills</div>
+          <div class="issue-detail">No project-local MCP server configuration (Supabase MCP, filesystem MCP). No skills for recurring multi-step workflows (add-feature, add-migration, sync-models).</div>
+        </div>
+        <span class="issue-tag tag-agent">agent</span>
+      </div>
+    </div>
+
+    <div class="subsection-label">Blueprint: what to build</div>
+    <div class="grid-3">
+      <div class="card" style="border-top: 2px solid var(--green);">
+        <div class="card-label">Priority 1</div>
+        <h3>.cursor/rules/</h3>
+        <p><code>project-context.mdc</code> (always-attach: true), <code>python-backend.mdc</code>, <code>ios-swift.mdc</code>, <code>database.mdc</code>. Each rule encodes what an agent needs to know for that layer.</p>
+      </div>
+      <div class="card" style="border-top: 2px solid var(--green);">
+        <div class="card-label">Priority 2</div>
+        <h3>AGENTS.md</h3>
+        <p>Root-level context file. Include: stack diagram, <code>make dev</code> and other key commands, how to add a feature (the 8-step chain), file naming conventions.</p>
+      </div>
+      <div class="card" style="border-top: 2px solid var(--blue);">
+        <div class="card-label">Priority 3</div>
+        <h3>.agent/mcp.json</h3>
+        <p>Supabase MCP for DB queries + migration runs. Filesystem MCP for structured file reads. Config pointing to local Supabase instance or hosted project.</p>
+      </div>
+      <div class="card" style="border-top: 2px solid var(--blue);">
+        <div class="card-label">Priority 4</div>
+        <h3>.agent/skills/</h3>
+        <p><code>add-feature.md</code> — the 8-step chain from schema to iOS service. <code>add-migration.md</code> — naming, RLS, triggers. <code>sync-models.md</code> — when and how to regenerate.</p>
+      </div>
+      <div class="card" style="border-top: 2px solid var(--amber);">
+        <div class="card-label">Priority 5</div>
+        <h3>scripts/status.sh --json</h3>
+        <p>Structured JSON output: Supabase running/stopped, backend URL, migration count, last migration name. An agent runs this to understand current state before acting.</p>
+      </div>
+      <div class="card" style="border-top: 2px solid var(--amber);">
+        <div class="card-label">Priority 6</div>
+        <h3>make agent-setup</h3>
+        <p>Installs MCP dependencies, links .agent/mcp.json to the Cursor project config path, validates Supabase connectivity. One command to go from clone to agent-ready.</p>
+      </div>
+    </div>
+
+    <div class="subsection-label">What a good project-context.mdc looks like</div>
+    <div class="code-block">
+      <pre><span class="str">---
+description: iOS-FastAPI-Supabase project context — always attach
+alwaysApply: true
+---</span>
+
+<span class="cm"># iOS · FastAPI · Supabase Starter</span>
+Stack: SwiftUI (iOS 17+) · FastAPI (Python 3.12, uv) · Supabase (Postgres 17)
+Monorepo layout: ios/ · backend/ · supabase/migrations/ · scripts/
+
+<span class="cm">## Key commands (run from repo root)</span>
+make dev                         <span class="cm"># Full stack: Supabase + Docker + Simulator</span>
+make dev ARGS=--no-ios           <span class="cm"># Services only (backend + Supabase)</span>
+make sync-models                 <span class="cm"># Regenerate GeneratedModels.swift from Pydantic</span>
+make ios-gen                     <span class="cm"># Regenerate Xcode project (Tuist)</span>
+cd backend && uv run pytest      <span class="cm"># Unit tests</span>
+
+<span class="cm">## Adding a feature (8-step chain)</span>
+1. backend/app/schemas/&lt;feature&gt;.py      → Pydantic In/Out/Update models
+2. backend/app/repositories/&lt;feature&gt;_repo.py → DB queries (accept Client)
+3. backend/app/services/&lt;feature&gt;_service.py  → Business logic
+4. backend/app/api/v1/&lt;feature&gt;.py        → Router, include in router.py
+5. supabase/migrations/YYYYMMDDHHMMSS_add_&lt;feature&gt;.sql → RLS + indexes
+6. make sync-models               → updates GeneratedModels.swift
+7. ios/…/Services/BackendAPIService.swift → Add endpoint methods
+8. ios/…/ViewModels/ContentViewModel.swift → Add state + actions</pre>
+    </div>
+  </div>
+
+  <!-- ════════════════════ REMAINING ════════════════════ -->
+  <div class="section" id="tab-remaining">
+    <div class="section-title">Remaining Action Items</div>
+    <div class="section-desc">Everything left before calling the template "done" — ordered by impact. Agent-ification is a separate sprint.</div>
+
+    <div class="subsection-label">Template polish (pre-agent)</div>
+    <div class="priority-list">
+      <div class="priority-item">
+        <div class="priority-num">1</div>
+        <div class="priority-text">
+          <strong>Add unit test for notes router (mocked)</strong>
+          <span>tests/api/test_notes_routes.py with mocked Supabase client. Completes the test story and CI coverage for the notes feature.</span>
+        </div>
+        <span class="effort effort-med">1–2 hr</span>
+      </div>
+      <div class="priority-item">
+        <div class="priority-num">2</div>
+        <div class="priority-text">
+          <strong>Add note edit UI — demo PATCH in ContentView</strong>
+          <span>Inline title edit for a note, mirrors the profile PATCH pattern. Makes BackendAPIService.updateNote actually called from the UI.</span>
+        </div>
+        <span class="effort effort-med">1 hr</span>
+      </div>
+      <div class="priority-item">
+        <div class="priority-num">3</div>
+        <div class="priority-text">
+          <strong>Add comment to notes_service.py: "when to add logic here"</strong>
+          <span>One-line example: "e.g. enforce max 100 notes per user before calling repo.create_note". Makes the thin passthrough educational.</span>
+        </div>
+        <span class="effort effort-low">5 min</span>
+      </div>
+      <div class="priority-item">
+        <div class="priority-num">4</div>
+        <div class="priority-text">
+          <strong>Cache SwiftLint binary in iOS CI</strong>
+          <span>Saves ~40–60s per iOS CI run. Use actions/cache@v4 on the brew cellar path, or switch to a dedicated SwiftLint action.</span>
+        </div>
+        <span class="effort effort-low">15 min</span>
+      </div>
+      <div class="priority-item">
+        <div class="priority-num">5</div>
+        <div class="priority-text">
+          <strong>Add <code>timeout-minutes: 30</code> to iOS CI job</strong>
+          <span>Prevents silent Xcode build hangs from burning runner minutes. One line in ios-ci.yml.</span>
+        </div>
+        <span class="effort effort-low">2 min</span>
+      </div>
+      <div class="priority-item">
+        <div class="priority-num">6</div>
+        <div class="priority-text">
+          <strong>Add "prefer sub-routers for non-trivial features" comment to router.py</strong>
+          <span>Clarifies when to add inline vs. include a new file. One comment line next to the profile routes.</span>
+        </div>
+        <span class="effort effort-low">2 min</span>
+      </div>
+      <div class="priority-item">
+        <div class="priority-num">7</div>
+        <div class="priority-text">
+          <strong>Clarify README step 2 about .env anon key</strong>
+          <span>Note that make dev auto-injects SUPABASE_PUBLIC_ANON_KEY — you don't need to edit .env manually before running it.</span>
+        </div>
+        <span class="effort effort-low">5 min</span>
+      </div>
+    </div>
+
+    <div class="subsection-label">Agent-ification sprint (separate)</div>
+    <div class="priority-list">
+      <div class="priority-item">
+        <div class="priority-num">A</div>
+        <div class="priority-text">
+          <strong>.cursor/rules/ — project-context, python-backend, ios-swift, database</strong>
+          <span>Highest-leverage agent addition. Context auto-attached to every chat.</span>
+        </div>
+        <span class="effort effort-med">1–2 hr</span>
+      </div>
+      <div class="priority-item">
+        <div class="priority-num">B</div>
+        <div class="priority-text">
+          <strong>AGENTS.md at repo root</strong>
+          <span>Stack, key commands, 8-step add-feature chain. Works with all agent frameworks.</span>
+        </div>
+        <span class="effort effort-low">30 min</span>
+      </div>
+      <div class="priority-item">
+        <div class="priority-num">C</div>
+        <div class="priority-text">
+          <strong>.agent/ directory with mcp.json + skills/</strong>
+          <span>Supabase MCP + filesystem MCP. add-feature.md, add-migration.md, sync-models.md skills.</span>
+        </div>
+        <span class="effort effort-med">2–3 hr</span>
+      </div>
+      <div class="priority-item">
+        <div class="priority-num">D</div>
+        <div class="priority-text">
+          <strong>scripts/status.sh --json + make agent-setup</strong>
+          <span>Structured status output for agents. Makefile target to wire MCP config into Cursor project path.</span>
+        </div>
+        <span class="effort effort-med">1–2 hr</span>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+    <div class="tag-row">
+      <span class="badge">Python 3.12</span>
+      <span class="badge">FastAPI 0.115</span>
+      <span class="badge">uv 0.11.2</span>
+      <span class="badge">Tuist 4.44.3</span>
+      <span class="badge">Supabase 2.84</span>
+      <span class="badge">iOS 17+</span>
+      <span class="badge">Swift 5.10</span>
+      <span class="badge">ruff + mypy</span>
+      <span class="badge">SwiftLint</span>
+      <span class="badge">GitHub Actions</span>
+    </div>
+    <div style="margin-top:14px; font-size:11px; color:var(--muted); font-family:'JetBrains Mono',monospace;">v2 · April 2026 · iOS-FastAPI-Supabase-AI</div>
+  </div>
+
+</div><!-- /content -->
+
+<script>
+  // Tab navigation
+  const navBtns = document.querySelectorAll('.nav-btn');
+  const sections = document.querySelectorAll('.section');
+
+  navBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tab = btn.dataset.tab;
+      navBtns.forEach(b => b.classList.remove('active'));
+      sections.forEach(s => s.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('tab-' + tab).classList.add('active');
+    });
+  });
+
+  // Animate score bars
+  window.addEventListener('load', () => {
+    setTimeout(() => {
+      document.querySelectorAll('.bar-fill[data-pct]').forEach(el => {
+        el.style.width = el.dataset.pct + '%';
+      });
+    }, 600);
+  });
+</script>
+</body>
+</html>

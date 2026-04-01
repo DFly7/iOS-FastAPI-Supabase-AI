@@ -23,6 +23,10 @@ on:
       - ".github/workflows/ios-ci.yml"
   workflow_dispatch:
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-and-test:
     runs-on: macos-15
@@ -33,14 +37,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # ── Tuist ──────────────────────────────────────────────────────────────
-      - name: Install mise
+      # Pinned versions: .mise.toml (tuist, swiftlint). Avoid Homebrew so CI matches local `mise install`.
+      - name: Install mise (Tuist + SwiftLint)
         uses: jdx/mise-action@v2
+        with:
+          install_args: tuist swiftlint
+          working_directory: ${{ github.workspace }}
 
-      - name: Install tools (Tuist, pinned version from .mise.toml)
-        run: mise install tuist
-        working-directory: ${{ github.workspace }}
+      - name: SwiftLint
+        run: swiftlint lint --strict --config .swiftlint.yml
 
+      # ── Tuist ──────────────────────────────────────────────────────────────
       # Cache resolved SPM packages fetched by `tuist install`.
       # Key includes Package.swift so the cache is busted on dependency changes.
       - name: Cache Tuist dependencies

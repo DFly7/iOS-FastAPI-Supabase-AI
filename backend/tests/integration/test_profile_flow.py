@@ -12,7 +12,12 @@ What each test proves
    proving migrations ran, the trigger executed, PostgREST is reachable, and
    RLS allows the owner to read their own row.
 
-3. test_profile_returns_404_after_row_deleted
+3. test_patch_profile_updates_display_name
+   PATCH /me/profile updates the display_name and returns the updated row,
+   proving the PATCH route, Pydantic validation, and the Supabase .update()
+   call all work end-to-end.
+
+4. test_profile_returns_404_after_row_deleted
    Deleting the profile row via the service-role REST API (bypasses RLS) and
    then calling GET /me/profile returns 404 — exercising the
    "empty PostgREST result → HTTPException(404)" branch in the route handler.
@@ -34,9 +39,7 @@ import pytest
 pytestmark = pytest.mark.integration
 
 
-def test_secure_test_returns_correct_user_id(
-    integration_client, test_credentials: dict
-) -> None:
+def test_secure_test_returns_correct_user_id(integration_client, test_credentials: dict) -> None:
     """Real token → /api/v1/secure-test echoes the correct user_id."""
     resp = integration_client.get(
         "/api/v1/secure-test",
@@ -47,9 +50,7 @@ def test_secure_test_returns_correct_user_id(
     assert resp.json()["message"] == "Token valid"
 
 
-def test_profile_auto_created_by_trigger(
-    integration_client, test_credentials: dict
-) -> None:
+def test_profile_auto_created_by_trigger(integration_client, test_credentials: dict) -> None:
     """Signup trigger fires → profile row exists and is readable via the API.
 
     This is the core end-to-end assertion: it would fail if:
@@ -69,6 +70,24 @@ def test_profile_auto_created_by_trigger(
     # display_name and avatar_url are nullable — just verify the keys are present.
     assert "display_name" in data
     assert "avatar_url" in data
+
+
+def test_patch_profile_updates_display_name(integration_client, test_credentials: dict) -> None:
+    """PATCH /me/profile with display_name → 200 and updated row returned.
+
+    Proves the PATCH route handler, Pydantic ProfileUpdate validation, and the
+    Supabase .update() → .eq() chain all work against a real database row.
+    RLS enforces that only the owner can update their own row.
+    """
+    resp = integration_client.patch(
+        "/api/v1/me/profile",
+        json={"display_name": "Integration Tester"},
+        headers={"Authorization": f"Bearer {test_credentials['access_token']}"},
+    )
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+    assert data["id"] == test_credentials["user_id"]
+    assert data["display_name"] == "Integration Tester"
 
 
 def test_profile_returns_404_after_row_deleted(

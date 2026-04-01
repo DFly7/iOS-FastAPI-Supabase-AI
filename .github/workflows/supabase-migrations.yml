@@ -20,6 +20,10 @@ on:
       - ".github/workflows/supabase-migrations.yml"
   workflow_dispatch:
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   migrate:
     name: Push migrations to production

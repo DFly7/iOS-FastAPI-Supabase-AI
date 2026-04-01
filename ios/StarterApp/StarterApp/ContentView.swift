@@ -2,100 +2,31 @@
 //  ContentView.swift
 //  StarterApp
 //
-//  Created by Darragh Flynn on 30/03/2026.
-//
 
 import SwiftUI
 
 struct ContentView: View {
     @EnvironmentObject private var authService: AuthService
 
-    @State private var secureTestResult: BackendAPIService.SecureTestResponse?
-    @State private var secureTestError: String?
-    @State private var profileResult: ProfileOut?
-    @State private var profileError: String?
-    @State private var isCallingBackend = false
-    @State private var isLoadingProfile = false
+    /// View model owns all async state. Declared with @State so SwiftUI tracks
+    /// @Observable property changes and re-renders only what actually changed.
+    @State private var viewModel = ContentViewModel()
+
+    // Local UI-only state — purely presentational, not part of the model.
+    @State private var isEditingDisplayName = false
+    @State private var editingDisplayName = ""
+    @State private var isShowingNoteComposer = false
+    @State private var newNoteTitle = ""
 
     var body: some View {
         NavigationStack {
             List {
-                Section("Backend (JWT)") {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(
-                            "Proves the app, Supabase session, and FastAPI `verify_jwt` share the same token. "
-                                + "Backend: \(APIConfig.backendURL.host ?? APIConfig.backendURL.absoluteString)"
-                        )
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-
-                        Button {
-                            Task { await callSecureTest() }
-                        } label: {
-                            if isCallingBackend {
-                                HStack {
-                                    ProgressView()
-                                    Text("Calling /api/v1/secure-test…")
-                                }
-                            } else {
-                                Text("Call /api/v1/secure-test")
-                            }
-                        }
-                        .disabled(isCallingBackend)
-
-                        if let secureTestResult {
-                            Text(secureTestResult.message)
-                                .font(.subheadline)
-                            if let uid = secureTestResult.userId {
-                                Text("user_id: \(uid)")
-                                    .font(.caption.monospaced())
-                                    .textSelection(.enabled)
-                            }
-                        }
-                        if let secureTestError {
-                            Text(secureTestError)
-                                .font(.footnote)
-                                .foregroundStyle(.red)
-                        }
-                    }
-                    .padding(.vertical, 4)
-                }
-
-                Section("Your profile (Supabase via backend)") {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(
-                            "FastAPI loads your `profiles` row with your JWT; Postgres RLS only allows your own id."
-                        )
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-
-                        Button {
-                            Task { await fetchProfileFromBackend() }
-                        } label: {
-                            if isLoadingProfile {
-                                HStack {
-                                    ProgressView()
-                                    Text("GET /api/v1/me/profile…")
-                                }
-                            } else {
-                                Text("Fetch my profile")
-                            }
-                        }
-                        .disabled(isLoadingProfile)
-
-                        if let profileResult {
-                            profileSummary(profileResult)
-                        }
-                        if let profileError {
-                            Text(profileError)
-                                .font(.footnote)
-                                .foregroundStyle(.red)
-                        }
-                    }
-                    .padding(.vertical, 4)
-                }
+                secureTestSection
+                profileSection
+                notesSection
             }
             .navigationTitle("Starter")
+            .task { await viewModel.fetchNotes(accessToken: authService.accessToken) }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Menu {
@@ -113,6 +44,191 @@ struct ContentView: View {
         }
     }
 
+    // MARK: - Secure test section
+
+    private var secureTestSection: some View {
+        Section("Backend (JWT)") {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(
+                    "Proves the app, Supabase session, and FastAPI `verify_jwt` share the same token. "
+                        + "Backend: \(APIConfig.backendURL.host ?? APIConfig.backendURL.absoluteString)"
+                )
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+
+                Button {
+                    Task { await viewModel.callSecureTest(accessToken: authService.accessToken) }
+                } label: {
+                    if viewModel.isCallingSecureTest {
+                        HStack { ProgressView(); Text("Calling /api/v1/secure-test…") }
+                    } else {
+                        Text("Call /api/v1/secure-test")
+                    }
+                }
+                .disabled(viewModel.isCallingSecureTest)
+
+                if let result = viewModel.secureTestResult {
+                    Text(result.message).font(.subheadline)
+                    if let uid = result.userId {
+                        Text("user_id: \(uid)")
+                            .font(.caption.monospaced())
+                            .textSelection(.enabled)
+                    }
+                }
+
+                if let error = viewModel.secureTestError {
+                    ErrorBanner(message: error) {
+                        Task { await viewModel.callSecureTest(accessToken: authService.accessToken) }
+                    }
+                }
+            }
+            .padding(.vertical, 4)
+        }
+    }
+
+    // MARK: - Profile section (GET + PATCH demo)
+
+    private var profileSection: some View {
+        Section("My Profile") {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("FastAPI loads your `profiles` row with your JWT; Postgres RLS only allows your own id.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+
+                if let profile = viewModel.profile {
+                    profileSummary(profile)
+
+                    if isEditingDisplayName {
+                        // PATCH /me/profile demo — inline edit form
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack {
+                                TextField("Display name", text: $editingDisplayName)
+                                    .textFieldStyle(.roundedBorder)
+                                Button("Save") {
+                                    let name = editingDisplayName
+                                    isEditingDisplayName = false
+                                    Task {
+                                        await viewModel.updateProfile(
+                                            displayName: name,
+                                            accessToken: authService.accessToken
+                                        )
+                                    }
+                                }
+                                .disabled(viewModel.isUpdatingProfile || editingDisplayName.isEmpty)
+                                Button("Cancel") { isEditingDisplayName = false }
+                                    .foregroundStyle(.secondary)
+                            }
+                            if viewModel.isUpdatingProfile {
+                                HStack { ProgressView().scaleEffect(0.75); Text("Saving…").font(.caption) }
+                            }
+                            if let err = viewModel.updateProfileError {
+                                ErrorBanner(message: err, onRetry: nil)
+                            }
+                        }
+                        .padding(.top, 4)
+                    } else {
+                        Button("Edit display name") {
+                            editingDisplayName = profile.displayName ?? ""
+                            isEditingDisplayName = true
+                        }
+                        .font(.footnote)
+                    }
+                } else {
+                    // GET /me/profile demo — button-triggered fetch
+                    Button {
+                        Task { await viewModel.fetchProfile(accessToken: authService.accessToken) }
+                    } label: {
+                        if viewModel.isLoadingProfile {
+                            HStack { ProgressView(); Text("GET /api/v1/me/profile…") }
+                        } else {
+                            Text("Fetch my profile")
+                        }
+                    }
+                    .disabled(viewModel.isLoadingProfile)
+                }
+
+                if let error = viewModel.profileError {
+                    ErrorBanner(message: error) {
+                        Task { await viewModel.fetchProfile(accessToken: authService.accessToken) }
+                    }
+                }
+            }
+            .padding(.vertical, 4)
+        }
+    }
+
+    // MARK: - Notes section (full CRUD demo)
+
+    private var notesSection: some View {
+        Section {
+            Text(
+                "Full CRUD: POST (create, 201), GET (list), DELETE (204) — all through the repo → service → router chain."
+            )
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+
+            if viewModel.isLoadingNotes {
+                HStack { ProgressView(); Text("Loading notes…").font(.footnote) }
+            }
+
+            ForEach(viewModel.notes) { note in
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(note.title).font(.subheadline)
+                    Text(note.createdAt, format: .relative(presentation: .named))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .onDelete { offsets in
+                for index in offsets {
+                    let id = viewModel.notes[index].id
+                    Task { await viewModel.deleteNote(id: id, accessToken: authService.accessToken) }
+                }
+            }
+
+            if isShowingNoteComposer {
+                HStack {
+                    TextField("Note title", text: $newNoteTitle)
+                        .textFieldStyle(.roundedBorder)
+                    Button("Add") {
+                        let title = newNoteTitle
+                        newNoteTitle = ""
+                        isShowingNoteComposer = false
+                        Task { await viewModel.createNote(title: title, accessToken: authService.accessToken) }
+                    }
+                    .disabled(newNoteTitle.trimmingCharacters(in: .whitespaces).isEmpty || viewModel.isCreatingNote)
+                    Button("Cancel") { newNoteTitle = ""; isShowingNoteComposer = false }
+                        .foregroundStyle(.secondary)
+                }
+            } else {
+                Button {
+                    isShowingNoteComposer = true
+                } label: {
+                    if viewModel.isCreatingNote {
+                        HStack { ProgressView().scaleEffect(0.75); Text("Creating…") }
+                    } else {
+                        Label("New Note", systemImage: "plus.circle")
+                    }
+                }
+                .disabled(viewModel.isCreatingNote)
+            }
+
+            if let error = viewModel.notesError {
+                ErrorBanner(message: error) {
+                    Task { await viewModel.fetchNotes(accessToken: authService.accessToken) }
+                }
+            }
+        } header: {
+            Text("Notes")
+        } footer: {
+            if !viewModel.notes.isEmpty {
+                Text("Swipe left on a note to delete.")
+            }
+        }
+    }
+
+    // MARK: - Profile avatar helpers
+
     @ViewBuilder
     private func profileSummary(_ profile: ProfileOut) -> some View {
         HStack(alignment: .top, spacing: 12) {
@@ -122,8 +238,7 @@ struct ContentView: View {
                     if let name = profile.displayName, !name.isEmpty {
                         Text(name)
                     } else {
-                        Text("No display name")
-                            .foregroundStyle(.secondary)
+                        Text("No display name").foregroundStyle(.secondary)
                     }
                 }
                 .font(.headline)
@@ -146,12 +261,9 @@ struct ContentView: View {
             AsyncImage(url: url) { phase in
                 switch phase {
                 case .empty:
-                    ProgressView()
-                        .frame(width: size, height: size)
+                    ProgressView().frame(width: size, height: size)
                 case .success(let image):
-                    image
-                        .resizable()
-                        .scaledToFill()
+                    image.resizable().scaledToFill()
                         .frame(width: size, height: size)
                         .clipShape(Circle())
                 case .failure:
@@ -171,34 +283,31 @@ struct ContentView: View {
             .foregroundStyle(.secondary)
             .frame(width: size, height: size)
     }
+}
 
-    @MainActor
-    private func callSecureTest() async {
-        secureTestError = nil
-        secureTestResult = nil
-        isCallingBackend = true
-        defer { isCallingBackend = false }
+// MARK: - Reusable error banner
 
-        do {
-            let response = try await BackendAPIService.fetchSecureTest(accessToken: authService.accessToken)
-            secureTestResult = response
-        } catch {
-            secureTestError = error.localizedDescription
+/// Displays an error message with an optional Retry button.
+/// Drop this anywhere a network call can fail.
+private struct ErrorBanner: View {
+    let message: String
+    let onRetry: (() -> Void)?
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(.red)
+            Text(message)
+                .font(.footnote)
+                .foregroundStyle(.red)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            if let onRetry {
+                Button("Retry", action: onRetry)
+                    .font(.footnote.bold())
+            }
         }
-    }
-
-    @MainActor
-    private func fetchProfileFromBackend() async {
-        profileError = nil
-        profileResult = nil
-        isLoadingProfile = true
-        defer { isLoadingProfile = false }
-
-        do {
-            profileResult = try await BackendAPIService.fetchMyProfile(accessToken: authService.accessToken)
-        } catch {
-            profileError = error.localizedDescription
-        }
+        .padding(8)
+        .background(.red.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
     }
 }
 

@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ProfileOut(BaseModel):
@@ -11,3 +11,10 @@ class ProfileOut(BaseModel):
     display_name: str | None
     avatar_url: str | None
     created_at: datetime
+
+
+class ProfileUpdate(BaseModel):
+    """PATCH /me/profile request body — all fields optional (partial update)."""
+
+    display_name: str | None = Field(None, max_length=100)
+    avatar_url: str | None = Field(None, max_length=2048)
