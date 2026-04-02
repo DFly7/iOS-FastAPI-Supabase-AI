@@ -1,7 +1,10 @@
 # Run from the repo root: make <target>
 # Pass extra flags directly:  make dev ARGS="--regen --sim-logs"
 
-.PHONY: dev dev-logs stop sync-models check-models ios-gen help
+.PHONY: dev dev-logs stop sync-models check-models ios-gen ios-test ios-test-ui help
+
+# Auto-detect latest available iPhone simulator; override with UDID: make ios-test SIM_ID=<udid>
+SIM_ID ?= $(shell xcrun simctl list devices available | grep -i iphone | tail -1 | grep -oEi '[0-9A-F-]{36}')
 
 # ── Local dev ────────────────────────────────────────────────────────────────
 
@@ -20,6 +23,24 @@ stop: ## Stop all running services (Docker, Supabase, tmux log session)
 
 ios-gen: ## Re-generate the Xcode project (after adding/removing Swift files)
 	cd ios/StarterApp && tuist generate
+
+ios-test: ## Run unit tests on Simulator  (override: SIM_ID=<udid>)
+	@[ -n "$(SIM_ID)" ] || (echo "No iPhone simulator found — install one via Xcode ▸ Settings ▸ Platforms"; exit 1)
+	set -o pipefail && cd ios/StarterApp && xcodebuild test \
+		-workspace StarterApp.xcworkspace \
+		-scheme StarterApp \
+		-only-testing:StarterAppTests \
+		-destination 'platform=iOS Simulator,id=$(SIM_ID)' \
+		2>&1 | bundle exec xcpretty --color
+
+ios-test-ui: ## Run UI tests on Simulator  (override: SIM_ID=<udid>)
+	@[ -n "$(SIM_ID)" ] || (echo "No iPhone simulator found — install one via Xcode ▸ Settings ▸ Platforms"; exit 1)
+	set -o pipefail && cd ios/StarterApp && xcodebuild test \
+		-workspace StarterApp.xcworkspace \
+		-scheme StarterApp \
+		-only-testing:StarterAppUITests \
+		-destination 'platform=iOS Simulator,id=$(SIM_ID)' \
+		2>&1 | bundle exec xcpretty --color
 
 # ── Distribution ─────────────────────────────────────────────────────────────
 
