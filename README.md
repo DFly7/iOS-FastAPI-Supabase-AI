@@ -103,7 +103,8 @@ iPhone (or Simulator)
 ### CI / CD (GitHub Actions)
 - `backend-ci.yml` — lint, test, build Docker image, push to GHCR on `main`
 - `backend-integration.yml` — install Supabase CLI, `supabase start`, run integration tests against it
-- `ios-ci.yml` — `tuist generate`, `xcodebuild test` on macOS-15
+- `ios-ci.yml` — `tuist generate`, `xcodebuild test` on macOS-15 (Xcode 16.2 pinned)
+- `distribute.yml` — signed Release archive → TestFlight, triggered on `v*` tags (see [Path to TestFlight](#path-to-testflight))
 - `supabase-migrations.yml` — push migrations to your hosted Supabase project when `supabase/migrations/**` changes on `main`
 
 ---
@@ -190,6 +191,7 @@ Build and run on the Simulator or a physical device (device builds need valid si
 │   ├── ios-sim.sh           # Build / launch Simulator (used by dev.sh)
 │   ├── tunnel.sh            # Optional HTTPS forwarding for physical devices
 │   ├── sync_models.py       # Pydantic → Swift Codable (make sync-models / check-models)
+│   ├── setup-dist.sh        # Distribution wizard (make setup-dist → TestFlight)
 │   └── _lib.sh              # Shared helpers for bash scripts
 └── local-setup.md           # Full local dev runbook (tunnels, physical device, manual tabs)
 ```
@@ -216,6 +218,70 @@ All versions are pinned in `.mise.toml` and kept in sync with CI:
 | Supabase API | 54321 | `http://127.0.0.1:54321` |
 | Supabase Studio | 54323 | `http://127.0.0.1:54323` |
 | FastAPI backend | 8000 | `http://127.0.0.1:8000` |
+
+---
+
+## Path to TestFlight
+
+> `make setup-dist` handles all of the one-time setup. You do not need to manually click "New App" in the portal or manage certificates by hand.
+
+### Prerequisites (do these once in the browser)
+
+1. **Create a private GitHub repo** for certificates — leave it completely empty (e.g. `github.com/yourorg/yourapp-certs`). Fastlane match will populate it.
+2. **Download an App Store Connect API key** (`.p8`) from [App Store Connect → Users and Access → Integrations → App Store Connect API](https://appstoreconnect.apple.com/access/integrations/api). Note the Key ID and Issuer ID.
+
+### One-time local setup
+
+```sh
+make setup-dist
+```
+
+The wizard will:
+- Validate your `Project.swift` is clean, your `.p8` key is readable, and your credentials resolve (smoke test — fails fast before writing anything)
+- Fill in `Config-Release.xcconfig` and `fastlane/Appfile` / `fastlane/Matchfile` with your values
+- Run `fastlane produce` to create the App Store Connect record and register the App ID (idempotent — safe to re-run)
+- Run `fastlane match appstore` to generate certificates and provisioning profiles and push them to your private certs repo
+- Print the exact GitHub Secrets to add
+
+> **Important:** `make setup-dist` must be run locally before the first tag push. CI pulls certs from the private repo — if the repo is empty, the build will fail.
+
+### Add GitHub Secrets
+
+After the wizard finishes, add the printed values to your repo:  
+**GitHub → Settings → Secrets and variables → Actions**
+
+| Secret | Description |
+|---|---|
+| `DEVELOPMENT_TEAM` | 10-character Apple Team ID |
+| `APP_BUNDLE_ID` | e.g. `com.yourcompany.yourapp` |
+| `APP_NAME` | Display name for App Store Connect |
+| `APPLE_ID` | Your Apple ID email |
+| `SUPABASE_URL` | Production Supabase project URL |
+| `SUPABASE_ANON_KEY` | Production Supabase anon key |
+| `POSTHOG_API_KEY` | PostHog key (leave empty to disable) |
+| `MATCH_GIT_URL` | URL of your private certs repo |
+| `MATCH_PASSWORD` | Encryption password set during `match init` |
+| `GIT_BASIC_AUTH` | `base64(github_username:PAT)` — PAT needs `repo` scope |
+| `APP_STORE_CONNECT_API_KEY_ID` | 10-character key ID from App Store Connect |
+| `APP_STORE_CONNECT_API_ISSUER_ID` | UUID issuer ID from App Store Connect |
+| `APP_STORE_CONNECT_API_KEY_CONTENT` | Full contents of your `.p8` key file |
+
+### Ship a build
+
+```sh
+git tag v0.1.0 && git push --tags
+```
+
+This triggers the **Distribute to TestFlight** GitHub Action. The build appears in TestFlight within ~15 minutes of the workflow completing.
+
+### Useful commands
+
+| Command | What it does |
+|---|---|
+| `make setup-dist` | Full one-time setup wizard |
+| `make create-app` | Re-create App Store Connect record (idempotent) |
+| `make beta` | Build + upload to TestFlight locally |
+| `make release` | Build + submit to App Store locally |
 
 ---
 

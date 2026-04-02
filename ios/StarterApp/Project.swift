@@ -3,10 +3,6 @@ import ProjectDescription
 let project = Project(
     name: "StarterApp",
     settings: .settings(
-        base: [
-            // Fallback: no-team builds still compile for Simulator
-            "CODE_SIGNING_ALLOWED": "NO",
-        ],
         configurations: [
             .debug(name: "Debug", xcconfig: "Config-Debug.xcconfig"),
             .release(name: "Release", xcconfig: "Config-Release.xcconfig"),
@@ -21,6 +17,17 @@ let project = Project(
             bundleId: "$(PRODUCT_BUNDLE_IDENTIFIER)",
             deploymentTargets: .iOS("17.0"),
             infoPlist: .extendingDefault(with: [
+                // Declare standard HTTPS-only encryption so TestFlight build processing
+                // skips the manual compliance questionnaire and goes straight to testers.
+                // This app uses TLS via Apple's Network.framework only — no custom crypto.
+                // If you add your own encryption layer, change this to true and complete
+                // the encryption compliance form in App Store Connect.
+                "ITSAppUsesNonExemptEncryption": .boolean(false),
+                // Allow plain HTTP to loopback in all builds. Production URLs use HTTPS;
+                // this only matters for local device testing against a tunnel or Simulator.
+                "NSAppTransportSecurity": .dictionary([
+                    "NSAllowsLocalNetworking": .boolean(true),
+                ]),
                 // Runtime URLs and keys — values injected from xcconfig
                 "BackendURL": "$(BACKEND_URL)",
                 "SupabaseURL": "$(SUPABASE_URL)",

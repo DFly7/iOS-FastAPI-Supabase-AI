@@ -38,6 +38,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Pin Xcode to a known-good version so runner image updates don't silently
+      # change the compiler. Keep in sync with distribute.yml.
+      # Available versions: https://github.com/actions/runner-images/blob/main/images/macos/macos-15-Readme.md
+      - name: Select Xcode 16.2
+        run: sudo xcode-select -s /Applications/Xcode_16.2/Contents/Developer
+
       # Pinned versions: .mise.toml (tuist, swiftlint). Avoid Homebrew so CI matches local `mise install`.
       - name: Install mise (Tuist + SwiftLint)
         uses: jdx/mise-action@v2

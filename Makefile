@@ -21,6 +21,20 @@ stop: ## Stop all running services (Docker, Supabase, tmux log session)
 ios-gen: ## Re-generate the Xcode project (after adding/removing Swift files)
 	cd ios/StarterApp && tuist generate
 
+# ── Distribution ─────────────────────────────────────────────────────────────
+
+setup-dist: ## One-time wizard: configure signing, create App Store record, seed certs repo
+	./scripts/setup-dist.sh
+
+create-app: ## Create App Store Connect record + register App ID (idempotent)
+	cd ios/StarterApp && bundle exec fastlane create_app
+
+beta: ## Build and upload to TestFlight via Fastlane
+	cd ios/StarterApp && bundle exec fastlane beta
+
+release: ## Submit to App Store via Fastlane (review not triggered automatically)
+	cd ios/StarterApp && bundle exec fastlane release
+
 # ── Models ───────────────────────────────────────────────────────────────────
 
 sync-models: ## Generate Swift Codable structs from Pydantic schemas
