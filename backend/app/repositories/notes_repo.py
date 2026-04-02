@@ -5,6 +5,7 @@
 
 from uuid import UUID
 
+from postgrest import CountMethod
 from supabase import AsyncClient
 
 from app.schemas.notes import NoteIn, NoteOut, NoteUpdate
@@ -16,7 +17,7 @@ async def count_notes(client: AsyncClient, user_id: UUID) -> int:
     """Return the number of notes owned by *user_id* without fetching row data."""
     res = await (
         client.table("notes")
-        .select("*", count="exact")
+        .select("*", count=CountMethod.exact)
         .eq("user_id", str(user_id))
         .limit(0)
         .execute()
