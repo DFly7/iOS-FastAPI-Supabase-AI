@@ -57,7 +57,10 @@ let project = Project(
                 ]),
             ]),
             sources: ["StarterApp/**/*.swift"],
-            resources: ["StarterApp/Assets.xcassets"],
+            resources: [
+                "StarterApp/Assets.xcassets",
+                "StarterApp/PrivacyInfo.xcprivacy",
+            ],
             entitlements: .file(path: "StarterApp.entitlements"),
             dependencies: [
                 .external(name: "Supabase"),

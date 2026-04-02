@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!--
+        App-level privacy manifest (required since May 2024).
+
+        SDK-level manifests (Supabase-swift, PostHog, PLCrashReporter) are
+        bundled inside those SPM packages and are aggregated automatically by
+        Xcode 15+ — no need to duplicate them here.
+
+        Required Reason APIs used directly by this app target:
+        - NSPrivacyAccessedAPICategoryUserDefaults (CA92.1)
+          Reason: reading/writing settings stored by this app itself.
+    -->
+
+    <!-- Set to true and list domains only if this app does cross-app/cross-site tracking. -->
+    <key>NSPrivacyTracking</key>
+    <false/>
+    <key>NSPrivacyTrackingDomains</key>
+    <array/>
+
+    <!-- Declare data types the app collects. Add entries here as features grow. -->
+    <key>NSPrivacyCollectedDataTypes</key>
+    <array/>
+
+    <!-- Required Reason APIs accessed by this app process. -->
+    <key>NSPrivacyAccessedAPITypes</key>
+    <array>
+        <dict>
+            <key>NSPrivacyAccessedAPIType</key>
+            <string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+            <key>NSPrivacyAccessedAPITypeReasons</key>
+            <array>
+                <!-- CA92.1: Access info from the same app that wrote it. -->
+                <string>CA92.1</string>
+            </array>
+        </dict>
+    </array>
+</dict>
+</plist>
