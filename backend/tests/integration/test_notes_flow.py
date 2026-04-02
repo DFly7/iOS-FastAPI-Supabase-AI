@@ -9,6 +9,7 @@ What each test proves
 2. test_create_note_returns_201
    POST /me/notes with a valid title creates a note and returns 201 with the
    persisted row including server-assigned id, created_at, and updated_at.
+   (Uses the module-scoped ``integration_created_note`` fixture — see below.)
 
 3. test_list_notes_returns_created_note
    After creation, GET /me/notes includes the new note, proving the list
@@ -31,6 +32,13 @@ What each test proves
    GET /me/notes/{id} after deletion returns 404 — confirming the "not found"
    branch in the router handler fires correctly.
 
+The ``integration_created_note`` fixture (scope="module") creates exactly one
+note the first time a test requests it. Keep ``test_notes_list_empty_on_fresh_user``
+above any test that depends on that fixture so the empty-list assertion still
+runs against a user with no notes. The session-scoped ``test_credentials`` dict
+is not mutated, so profile integration tests cannot accidentally read a stale
+``note_id`` key from this module.
+
 Run locally (requires `supabase start` and the three env vars exported):
 
     export SUPABASE_URL=http://127.0.0.1:54321
@@ -45,18 +53,9 @@ import pytest
 pytestmark = pytest.mark.integration
 
 
-def test_notes_list_empty_on_fresh_user(integration_client, test_credentials: dict) -> None:
-    """Fresh user → GET /me/notes returns an empty list."""
-    resp = integration_client.get(
-        "/api/v1/me/notes",
-        headers={"Authorization": f"Bearer {test_credentials['access_token']}"},
-    )
-    assert resp.status_code == 200, resp.text
-    assert resp.json() == []
-
-
-def test_create_note_returns_201(integration_client, test_credentials: dict) -> None:
-    """POST /me/notes with a valid body → 201 with the persisted note."""
+@pytest.fixture(scope="module")
+def integration_created_note(integration_client, test_credentials: dict) -> dict:
+    """One persisted note for this module; lazily created on first use."""
     resp = integration_client.post(
         "/api/v1/me/notes",
         json={"title": "Integration test note", "body": "Hello from CI"},
@@ -70,16 +69,29 @@ def test_create_note_returns_201(integration_client, test_credentials: dict) -> 
     assert "id" in data
     assert "created_at" in data
     assert "updated_at" in data
-    # Store id for use in subsequent tests via shared credentials dict.
-    test_credentials["note_id"] = data["id"]
+    return data
 
 
-def test_list_notes_returns_created_note(integration_client, test_credentials: dict) -> None:
-    """GET /me/notes returns the note created in the previous test."""
-    note_id = test_credentials.get("note_id")
-    if not note_id:
-        pytest.skip("Depends on test_create_note_returns_201 — run the full suite.")
+def test_notes_list_empty_on_fresh_user(integration_client, test_credentials: dict) -> None:
+    """Fresh user → GET /me/notes returns an empty list."""
+    resp = integration_client.get(
+        "/api/v1/me/notes",
+        headers={"Authorization": f"Bearer {test_credentials['access_token']}"},
+    )
+    assert resp.status_code == 200, resp.text
+    assert resp.json() == []
 
+
+def test_create_note_returns_201(integration_created_note: dict) -> None:
+    """POST /me/notes ran in fixture → response matches expectations."""
+    assert integration_created_note["title"] == "Integration test note"
+
+
+def test_list_notes_returns_created_note(
+    integration_client, test_credentials: dict, integration_created_note: dict
+) -> None:
+    """GET /me/notes returns the note created via the module fixture."""
+    note_id = integration_created_note["id"]
     resp = integration_client.get(
         "/api/v1/me/notes",
         headers={"Authorization": f"Bearer {test_credentials['access_token']}"},
@@ -89,12 +101,11 @@ def test_list_notes_returns_created_note(integration_client, test_credentials: d
     assert note_id in ids
 
 
-def test_get_single_note_returns_200(integration_client, test_credentials: dict) -> None:
+def test_get_single_note_returns_200(
+    integration_client, test_credentials: dict, integration_created_note: dict
+) -> None:
     """GET /me/notes/{id} returns the individual note."""
-    note_id = test_credentials.get("note_id")
-    if not note_id:
-        pytest.skip("Depends on test_create_note_returns_201 — run the full suite.")
-
+    note_id = integration_created_note["id"]
     resp = integration_client.get(
         f"/api/v1/me/notes/{note_id}",
         headers={"Authorization": f"Bearer {test_credentials['access_token']}"},
@@ -103,12 +114,11 @@ def test_get_single_note_returns_200(integration_client, test_credentials: dict)
     assert resp.json()["id"] == note_id
 
 
-def test_patch_note_updates_title(integration_client, test_credentials: dict) -> None:
+def test_patch_note_updates_title(
+    integration_client, test_credentials: dict, integration_created_note: dict
+) -> None:
     """PATCH /me/notes/{id} changes the title and returns the updated row."""
-    note_id = test_credentials.get("note_id")
-    if not note_id:
-        pytest.skip("Depends on test_create_note_returns_201 — run the full suite.")
-
+    note_id = integration_created_note["id"]
     resp = integration_client.patch(
         f"/api/v1/me/notes/{note_id}",
         json={"title": "Patched title"},
@@ -122,12 +132,11 @@ def test_patch_note_updates_title(integration_client, test_credentials: dict) ->
     assert data["id"] == note_id
 
 
-def test_delete_note_returns_204(integration_client, test_credentials: dict) -> None:
+def test_delete_note_returns_204(
+    integration_client, test_credentials: dict, integration_created_note: dict
+) -> None:
     """DELETE /me/notes/{id} → 204 No Content and note absent from list."""
-    note_id = test_credentials.get("note_id")
-    if not note_id:
-        pytest.skip("Depends on test_create_note_returns_201 — run the full suite.")
-
+    note_id = integration_created_note["id"]
     del_resp = integration_client.delete(
         f"/api/v1/me/notes/{note_id}",
         headers={"Authorization": f"Bearer {test_credentials['access_token']}"},
@@ -144,12 +153,11 @@ def test_delete_note_returns_204(integration_client, test_credentials: dict) -> 
     assert note_id not in ids
 
 
-def test_get_deleted_note_returns_404(integration_client, test_credentials: dict) -> None:
+def test_get_deleted_note_returns_404(
+    integration_client, test_credentials: dict, integration_created_note: dict
+) -> None:
     """GET /me/notes/{id} after deletion → 404 Not Found."""
-    note_id = test_credentials.get("note_id")
-    if not note_id:
-        pytest.skip("Depends on test_create_note_returns_201 — run the full suite.")
-
+    note_id = integration_created_note["id"]
     resp = integration_client.get(
         f"/api/v1/me/notes/{note_id}",
         headers={"Authorization": f"Bearer {test_credentials['access_token']}"},

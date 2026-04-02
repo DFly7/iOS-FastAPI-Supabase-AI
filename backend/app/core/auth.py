@@ -8,7 +8,7 @@ import structlog
 from fastapi import Depends, HTTPException, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
-from supabase import Client, create_client
+from supabase import AsyncClient, acreate_client
 
 from app.core.config import get_settings
 
@@ -20,7 +20,7 @@ _settings = get_settings()
 class AuthenticatedClient(BaseModel):
     model_config = {"arbitrary_types_allowed": True}
 
-    client: Client
+    client: AsyncClient
     payload: dict
 
 
@@ -144,20 +144,21 @@ async def verify_jwt(
         raise HTTPException(status_code=401, detail=f"Token verification failed: {e}") from e
 
 
-def get_supabase_client_as_user(auth_data: AuthData = Depends(verify_jwt)) -> Client:
+async def get_supabase_client_as_user(auth_data: AuthData = Depends(verify_jwt)) -> AsyncClient:
     url = _supabase_base_url()
     key = _settings.supabase_public_anon_key
     if not key:
         raise HTTPException(status_code=503, detail="Server missing SUPABASE_PUBLIC_ANON_KEY")
     # Per-request allocation is intentional: .postgrest.auth() mutates the client with
     # this user's JWT, so a shared instance would race across concurrent requests.
-    # At scale, switch to acreate_client (async) and/or a shared httpx transport.
-    supabase = create_client(url, key)
+    supabase = await acreate_client(url, key)
     supabase.postgrest.auth(auth_data["token"])
     return supabase
 
 
-def get_authenticated_client(auth_data: AuthData = Depends(verify_jwt)) -> AuthenticatedClient:
+async def get_authenticated_client(
+    auth_data: AuthData = Depends(verify_jwt),
+) -> AuthenticatedClient:
     user_id = auth_data["payload"]["sub"]
     user_email = auth_data["payload"].get("email")
     logger.debug(
@@ -169,7 +170,6 @@ def get_authenticated_client(auth_data: AuthData = Depends(verify_jwt)) -> Authe
     key = _settings.supabase_public_anon_key
     if not key:
         raise HTTPException(status_code=503, detail="Server missing SUPABASE_PUBLIC_ANON_KEY")
-    # See get_supabase_client_as_user for the rationale behind per-request creation.
-    supabase = create_client(url, key)
+    supabase = await acreate_client(url, key)
     supabase.postgrest.auth(auth_data["token"])
     return AuthenticatedClient(client=supabase, payload=auth_data["payload"])

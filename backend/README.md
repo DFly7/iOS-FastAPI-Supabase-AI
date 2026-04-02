@@ -115,7 +115,7 @@ CI may set secrets like `SUPABASE_URL` for imports that touch auth configuration
 
 | Area | Current behaviour | At-scale upgrade |
 |------|------------------|-----------------|
-| **Supabase client per request** | `create_client(url, key)` (sync) is called on every authenticated request and `.postgrest.auth(token)` immediately mutates it with the caller's JWT. Per-request creation is intentional: the auth header is user-specific so a shared, mutable client would race. | Switch to `acreate_client` (async) to remove the sync allocation. For high-throughput workloads, pass a shared `httpx.AsyncClient` (with a connection pool) as the transport, or call PostgREST directly via the pooled client you already have in `AsyncJWKSManager`. |
+| **Supabase client per request** | `acreate_client(url, key)` (async) is called on every authenticated request and `.postgrest.auth(token)` immediately mutates it with the caller's JWT. Per-request creation is intentional: the auth header is user-specific so a shared, mutable client would race. | For high-throughput workloads, pass a shared `httpx.AsyncClient` (with a connection pool) as the transport, or call PostgREST directly via the pooled client you already have in `AsyncJWKSManager`. |
 | **JWKS fetch** | Lazy, cached after first fetch, re-fetched on unknown `kid`. Single `httpx.AsyncClient` shared across all requests. | Already async and non-blocking; suitable for production traffic as-is. |
 
 ---
@@ -125,6 +125,26 @@ CI may set secrets like `SUPABASE_URL` for imports that touch auth configuration
 1. Add Pydantic models under `app/schemas/`.
 2. Add Supabase access under `app/repositories/`.
 3. Add orchestration under `app/services/`.
-4. Mount new routers from `app/api/v1/router.py` with `include_router`.
+4. Create a dedicated sub-router file under `app/api/v1/` (e.g. `invoices.py`) and mount it in `router.py` with `include_router`.
 
 Keep route handlers thin; enforce auth with `Depends(verify_jwt)` or router-level dependencies when entire groups should be private.
+
+### `async def` in route handlers
+
+All route handlers use `async def` and `await` every Supabase `.execute()` call.
+The project uses `acreate_client` (the async Supabase client), so the event loop
+is never blocked by database I/O.
+
+Pure utility handlers that do no I/O (e.g. `/ping`) keep plain `def` — there is
+nothing to await and FastAPI handles both without any thread-pool overhead.
+
+If you ever call a **sync** blocking library from inside an `async def` handler,
+wrap it with `asyncio.to_thread(...)` to avoid stalling the event loop.
+
+### Inline routes vs feature sub-routers
+
+`router.py` contains a few short utility endpoints inline (`/ping`,
+`/secure-test`, `/me/profile`) to show common patterns at a glance.  For
+anything beyond a single endpoint — its own service layer, multiple CRUD
+operations, dedicated tests — create a sub-router file (see `notes.py` as the
+reference implementation) and mount it with `include_router`.

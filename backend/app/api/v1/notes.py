@@ -17,53 +17,55 @@ router = APIRouter(prefix="/me/notes", tags=["notes"])
 
 
 @router.get("", response_model=list[NoteOut])
-def list_notes(
+async def list_notes(
     auth: AuthenticatedClient = Depends(get_authenticated_client),
 ) -> list[NoteOut]:
     """Return all notes owned by the signed-in user, newest first."""
-    return notes_service.list_user_notes(auth.client, auth.payload["sub"])
+    return await notes_service.list_user_notes(auth.client, auth.payload["sub"])
 
 
 @router.post("", response_model=NoteOut, status_code=status.HTTP_201_CREATED)
-def create_note(
+async def create_note(
     payload: NoteIn,
     auth: AuthenticatedClient = Depends(get_authenticated_client),
 ) -> NoteOut:
     """Create a new note. Returns 201 with the created resource."""
-    return notes_service.create_user_note(auth.client, auth.payload["sub"], payload)
+    return await notes_service.create_user_note(auth.client, auth.payload["sub"], payload)
 
 
 @router.get("/{note_id}", response_model=NoteOut)
-def get_note(
+async def get_note(
     note_id: UUID,
     auth: AuthenticatedClient = Depends(get_authenticated_client),
 ) -> NoteOut:
     """Return a single note by ID (must belong to the signed-in user)."""
-    note = notes_service.get_user_note(auth.client, note_id, auth.payload["sub"])
+    note = await notes_service.get_user_note(auth.client, note_id, auth.payload["sub"])
     if not note:
         raise HTTPException(status_code=404, detail="Note not found.")
     return note
 
 
 @router.patch("/{note_id}", response_model=NoteOut)
-def update_note(
+async def update_note(
     note_id: UUID,
     payload: NoteUpdate,
     auth: AuthenticatedClient = Depends(get_authenticated_client),
 ) -> NoteOut:
     """Partially update a note — only supplied fields are changed (PATCH semantics)."""
-    note = notes_service.update_user_note(auth.client, note_id, auth.payload["sub"], payload)
+    note = await notes_service.update_user_note(
+        auth.client, note_id, auth.payload["sub"], payload
+    )
     if not note:
         raise HTTPException(status_code=404, detail="Note not found.")
     return note
 
 
 @router.delete("/{note_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_note(
+async def delete_note(
     note_id: UUID,
     auth: AuthenticatedClient = Depends(get_authenticated_client),
 ) -> None:
     """Delete a note. Returns 204 No Content on success."""
-    deleted = notes_service.delete_user_note(auth.client, note_id, auth.payload["sub"])
+    deleted = await notes_service.delete_user_note(auth.client, note_id, auth.payload["sub"])
     if not deleted:
         raise HTTPException(status_code=404, detail="Note not found.")

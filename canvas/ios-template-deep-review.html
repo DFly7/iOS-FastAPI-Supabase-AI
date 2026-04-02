@@ -1,0 +1,1036 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>iOS Template Deep Review</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #080c0f;
+    --surface: #0f1419;
+    --surface2: #161d24;
+    --border: #1e2d3d;
+    --text: #d4e0eb;
+    --text-dim: #5a7a8e;
+    --text-bright: #f0f8ff;
+    --accent: #00d4ff;
+    --amber: #ffb020;
+    --green: #22c55e;
+    --red: #f43f5e;
+    --orange: #fb923c;
+    --purple: #a78bfa;
+    --score-bg: rgba(0,212,255,0.06);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* Noise texture overlay */
+  body::before {
+    content: '';
+    position: fixed; inset: 0; z-index: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    opacity: 0.4;
+  }
+
+  .wrap { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; padding: 40px 32px 80px; }
+
+  /* ── HEADER ── */
+  .header {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 24px;
+    align-items: end;
+    margin-bottom: 48px;
+    padding-bottom: 32px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .header-left {}
+  .header-eyebrow {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .header-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(48px, 7vw, 88px);
+    line-height: 0.95;
+    letter-spacing: 0.02em;
+    color: var(--text-bright);
+  }
+  .header-title span { color: var(--accent); }
+  .header-sub {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-top: 12px;
+  }
+
+  .overall-score {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-top: 3px solid var(--accent);
+    padding: 20px 28px;
+    text-align: center;
+    min-width: 140px;
+  }
+  .overall-score .score-val {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 64px;
+    line-height: 1;
+    color: var(--accent);
+  }
+  .overall-score .score-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-top: 4px;
+  }
+
+  /* ── SCORE STRIP ── */
+  .score-strip {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 2px;
+    margin-bottom: 48px;
+  }
+  .score-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 16px 12px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  .score-card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: var(--card-color, var(--accent));
+  }
+  .score-card:hover, .score-card.active {
+    background: var(--surface2);
+    border-color: var(--card-color, var(--accent));
+  }
+  .score-card.active { border-color: var(--card-color, var(--accent)); }
+  .score-card .cat-score {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 36px;
+    line-height: 1;
+    color: var(--card-color, var(--accent));
+  }
+  .score-card .cat-name {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-top: 4px;
+  }
+
+  /* ── SECTIONS ── */
+  .section {
+    display: none;
+    animation: fadeIn 0.3s ease;
+  }
+  .section.active { display: block; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+  .section-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 40px;
+    letter-spacing: 0.05em;
+    color: var(--text-bright);
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .section-title .stag {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    color: var(--accent);
+    background: rgba(0,212,255,0.1);
+    border: 1px solid rgba(0,212,255,0.3);
+    padding: 3px 10px;
+    letter-spacing: 0.06em;
+  }
+  .section-desc {
+    font-size: 14px;
+    color: var(--text-dim);
+    margin-bottom: 32px;
+    font-family: 'Space Mono', monospace;
+    max-width: 640px;
+  }
+
+  /* ── GRID LAYOUTS ── */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  .mb-24 { margin-bottom: 24px; }
+  .mb-32 { margin-bottom: 32px; }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 20px 22px;
+  }
+  .card-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-bright);
+    margin-bottom: 12px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .card-title .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--card-accent, var(--accent));
+    flex-shrink: 0;
+  }
+
+  /* ── ITEM LISTS ── */
+  .item-list { display: flex; flex-direction: column; gap: 7px; }
+  .item {
+    display: grid;
+    grid-template-columns: 20px 1fr;
+    gap: 8px;
+    align-items: baseline;
+    font-size: 13px;
+  }
+  .item .icon { font-size: 13px; text-align: center; }
+  .item .text { color: var(--text); }
+  .item .text .note {
+    display: block;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-top: 1px;
+  }
+
+  /* ── BADGES ── */
+  .badge {
+    display: inline-flex; align-items: center;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    padding: 2px 8px;
+    border-radius: 2px;
+    text-transform: uppercase;
+    font-weight: 700;
+  }
+  .badge-green { background: rgba(34,197,94,0.15); color: var(--green); border: 1px solid rgba(34,197,94,0.3); }
+  .badge-red { background: rgba(244,63,94,0.15); color: var(--red); border: 1px solid rgba(244,63,94,0.3); }
+  .badge-amber { background: rgba(255,176,32,0.15); color: var(--amber); border: 1px solid rgba(255,176,32,0.3); }
+  .badge-accent { background: rgba(0,212,255,0.1); color: var(--accent); border: 1px solid rgba(0,212,255,0.3); }
+  .badge-purple { background: rgba(167,139,250,0.15); color: var(--purple); border: 1px solid rgba(167,139,250,0.3); }
+
+  /* ── CODE BLOCKS ── */
+  .code-block {
+    background: #06090c;
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    padding: 14px 16px;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+    overflow-x: auto;
+    white-space: pre;
+    margin: 12px 0;
+    line-height: 1.7;
+  }
+  .code-block .kw { color: var(--accent); }
+  .code-block .str { color: var(--green); }
+  .code-block .cmt { color: #3a5a6e; }
+  .code-block .fn { color: var(--amber); }
+
+  /* ── DIVIDER ── */
+  .divider {
+    height: 1px;
+    background: linear-gradient(90deg, var(--border), transparent);
+    margin: 28px 0;
+  }
+
+  /* ── PRIORITY TABLE ── */
+  .priority-table { width: 100%; border-collapse: collapse; }
+  .priority-table th {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+    text-align: left;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .priority-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid rgba(30,45,61,0.6);
+    font-size: 13px;
+    vertical-align: top;
+  }
+  .priority-table tr:hover td { background: rgba(15,20,25,0.5); }
+  .priority-table .pri { font-family: 'Bebas Neue', sans-serif; font-size: 20px; }
+
+  /* ── PROGRESS BAR ── */
+  .progress-bar {
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 8px;
+  }
+  .progress-fill {
+    height: 100%;
+    border-radius: 2px;
+    background: var(--fill-color, var(--accent));
+    transition: width 0.8s ease;
+  }
+
+  /* ── SUBCAT ROW ── */
+  .subcat-row {
+    display: grid;
+    grid-template-columns: 1fr 80px;
+    gap: 12px;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(30,45,61,0.5);
+  }
+  .subcat-row:last-child { border-bottom: none; }
+  .subcat-label { font-size: 13px; color: var(--text); }
+  .subcat-score-val {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    text-align: right;
+  }
+
+  /* ── HIGHLIGHT BOX ── */
+  .highlight-box {
+    border: 1px solid;
+    padding: 16px 18px;
+    margin: 16px 0;
+  }
+  .highlight-box.green { border-color: rgba(34,197,94,0.3); background: rgba(34,197,94,0.05); }
+  .highlight-box.red { border-color: rgba(244,63,94,0.3); background: rgba(244,63,94,0.05); }
+  .highlight-box.amber { border-color: rgba(255,176,32,0.3); background: rgba(255,176,32,0.05); }
+  .highlight-box.accent { border-color: rgba(0,212,255,0.3); background: rgba(0,212,255,0.05); }
+  .highlight-box.purple { border-color: rgba(167,139,250,0.3); background: rgba(167,139,250,0.05); }
+  .highlight-box .hb-title {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 8px;
+    font-weight: 700;
+  }
+  .highlight-box.green .hb-title { color: var(--green); }
+  .highlight-box.red .hb-title { color: var(--red); }
+  .highlight-box.amber .hb-title { color: var(--amber); }
+  .highlight-box.accent .hb-title { color: var(--accent); }
+  .highlight-box.purple .hb-title { color: var(--purple); }
+
+  /* ── AGENT TILE ── */
+  .agent-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .agent-tile {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 18px 16px;
+    position: relative;
+    overflow: hidden;
+  }
+  .agent-tile::after {
+    content: '';
+    position: absolute; right: -20px; bottom: -20px;
+    width: 80px; height: 80px;
+    border-radius: 50%;
+    background: radial-gradient(circle, var(--tile-color, rgba(0,212,255,0.08)), transparent);
+  }
+  .agent-tile .at-icon { font-size: 24px; margin-bottom: 10px; }
+  .agent-tile .at-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--text-bright);
+    margin-bottom: 6px;
+  }
+  .agent-tile .at-status {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .agent-tile .at-desc { font-size: 12px; color: var(--text-dim); line-height: 1.5; }
+
+  /* ── TIMELINE ── */
+  .timeline { position: relative; padding-left: 28px; }
+  .timeline::before {
+    content: '';
+    position: absolute; left: 8px; top: 8px; bottom: 8px;
+    width: 1px; background: var(--border);
+  }
+  .tl-item {
+    position: relative;
+    padding: 0 0 20px 16px;
+  }
+  .tl-item::before {
+    content: '';
+    position: absolute; left: -24px; top: 5px;
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--tl-color, var(--border));
+    border: 2px solid var(--bg);
+  }
+  .tl-item .tl-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--tl-color, var(--text-dim));
+    margin-bottom: 4px;
+  }
+  .tl-item .tl-title {
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--text-bright);
+    margin-bottom: 4px;
+  }
+  .tl-item .tl-desc { font-size: 12px; color: var(--text-dim); }
+
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-left">
+      <div class="header-eyebrow">▸ Template Review · Apr 2026</div>
+      <div class="header-title">iOS<br/><span>TEMPLATE</span><br/>AUDIT</div>
+      <div class="header-sub">StarterApp · SwiftUI · Tuist · Supabase · FastAPI</div>
+    </div>
+    <div class="overall-score">
+      <div class="score-val">7.8</div>
+      <div class="score-label">Overall /10</div>
+      <div style="margin-top:12px;">
+        <span class="badge badge-amber">Solid · Ship-ready</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCORE STRIP / NAV -->
+  <div class="score-strip">
+    <div class="score-card active" data-section="usability" style="--card-color: var(--accent);">
+      <div class="cat-score" style="color:var(--accent)">8.5</div>
+      <div class="cat-name">Usability</div>
+    </div>
+    <div class="score-card" data-section="appstore" style="--card-color: var(--red);">
+      <div class="cat-score" style="color:var(--red)">5.5</div>
+      <div class="cat-name">App Store</div>
+    </div>
+    <div class="score-card" data-section="conventions" style="--card-color: var(--green);">
+      <div class="cat-score" style="color:var(--green)">9.0</div>
+      <div class="cat-name">Conventions</div>
+    </div>
+    <div class="score-card" data-section="dx" style="--card-color: var(--amber);">
+      <div class="cat-score" style="color:var(--amber)">8.0</div>
+      <div class="cat-name">DX</div>
+    </div>
+    <div class="score-card" data-section="agentx" style="--card-color: var(--purple);">
+      <div class="cat-score" style="color:var(--purple)">3.0</div>
+      <div class="cat-name">Agent·X</div>
+    </div>
+    <div class="score-card" data-section="actions" style="--card-color: var(--orange);">
+      <div class="cat-score" style="color:var(--orange)">↗</div>
+      <div class="cat-name">Next Steps</div>
+    </div>
+  </div>
+
+  <!-- ─────────────────────────────────── -->
+  <!-- SECTION: USABILITY -->
+  <!-- ─────────────────────────────────── -->
+  <div class="section active" id="section-usability">
+    <div class="section-title">Template Usability <span class="stag">8.5 / 10</span></div>
+    <div class="section-desc">First-run experience, docs quality, setup flow, and how quickly someone can run with it</div>
+
+    <div class="grid-2 mb-24">
+      <div class="card" style="--card-accent: var(--green)">
+        <div class="card-title"><span class="dot"></span> What Works Well</div>
+        <div class="item-list">
+          <div class="item"><span class="icon">✅</span><div class="text"><strong>make dev one-liner</strong> — single command boots entire stack (Supabase + Docker + Tuist + Simulator)<span class="note">scripts/dev.sh handles xcconfig auto-population too</span></div></div>
+          <div class="item"><span class="icon">✅</span><div class="text"><strong>Config.example.xcconfig</strong> — well-commented, maps to every runtime secret<span class="note">xcconfig → Info.plist → APIConfig pattern is clean and safe</span></div></div>
+          <div class="item"><span class="icon">✅</span><div class="text"><strong>README architecture diagram</strong> — ASCII diagram makes the tunnel/localhost topology clear<span class="note">Layer table in README is excellent onboarding context</span></div></div>
+          <div class="item"><span class="icon">✅</span><div class="text"><strong>mise for tool pinning</strong> — no "works on my machine" for Tuist/SwiftLint versions<span class="note">CI uses same mise install as local</span></div></div>
+          <div class="item"><span class="icon">✅</span><div class="text"><strong>sync_models.py</strong> — Pydantic → Swift model sync keeps types in lockstep<span class="note">make sync-models / make check-models is a great DX touch</span></div></div>
+          <div class="item"><span class="icon">✅</span><div class="text"><strong>local-setup.md</strong> — full runbook including tunnels and device signing</div></div>
+          <div class="item"><span class="icon">✅</span><div class="text"><strong>ios/StarterApp/.gitignore + root .gitignore</strong> — Tuist-aware; <code>DerivedDataRun/</code> ignored repo-wide (local-only after <code>-derivedDataPath</code> builds, never tracked)</div></div>
+        </div>
+      </div>
+
+      <div class="card" style="--card-accent: var(--red)">
+        <div class="card-title"><span class="dot" style="background:var(--red)"></span> Friction Points</div>
+        <div class="item-list">
+          <div class="item"><span class="icon">🔴</span><div class="text"><strong>Rename is multi-step and scattered</strong> — README lists 3 separate places to change bundle ID<span class="note">PRODUCT_BUNDLE_IDENTIFIER, CFBundleURLSchemes in Project.swift, supabase redirect URL — no rename script</span></div></div>
+          <div class="item"><span class="icon">🟡</span><div class="text"><strong>No "Start Here" checklist</strong> — README is great but there's no ✅ step-by-step for first-time users<span class="note">Could be 8 bullet steps: clone → mise install → copy xcconfigs → fill team ID → make dev</span></div></div>
+          <div class="item"><span class="icon">🟡</span><div class="text"><strong>ios/README.md is thin</strong> — 25 lines; duplicates root README without adding depth<span class="note">Good place for Tuist-specific gotchas, new file workflow, and simulator tips</span></div></div>
+          <div class="item"><span class="icon">🟡</span><div class="text"><strong>No make target for tests locally</strong> — ios-gen exists but no make ios-test<span class="note">Devs have to remember the xcodebuild command</span></div></div>
+          <div class="item"><span class="icon">🟡</span><div class="text"><strong>DEVELOPMENT_TEAM placeholder</strong> — Config.example.xcconfig has XXXXXXXXXX but no link to where to find it</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="highlight-box accent">
+      <div class="hb-title">★ Standout Feature</div>
+      The <code>configure_ios_xcconfig</code> function in <code>scripts/_lib.sh</code> automatically writes local Supabase URLs into Config-Debug.xcconfig on every <code>make dev</code>. This eliminates the #1 "why doesn't it connect?" onboarding failure. Very thoughtful.
+    </div>
+
+    <div class="highlight-box amber">
+      <div class="hb-title">Quick Win: Add a Rename Script</div>
+<div class="code-block"><span class="cmt"># scripts/rename.sh — replaces all template identifiers</span>
+<span class="kw">read</span> -p <span class="str">"Bundle ID (e.g. com.acme.myapp): "</span> BUNDLE_ID
+<span class="kw">read</span> -p <span class="str">"App name (e.g. MyApp): "</span> APP_NAME
+<span class="kw">read</span> -p <span class="str">"Team ID (10 chars from developer.apple.com): "</span> TEAM_ID
+
+<span class="cmt"># Update xcconfig, Project.swift, supabase/config.toml in one shot</span>
+<span class="fn">sed -i</span> <span class="str">"s/com.example.StarterApp/$BUNDLE_ID/g"</span> ios/StarterApp/Config-Debug.xcconfig
+<span class="fn">sed -i</span> <span class="str">"s/XXXXXXXXXX/$TEAM_ID/g"</span> ios/StarterApp/Config-Debug.xcconfig</div>
+      Add <code>make rename</code> → one command, no README archaeology.
+    </div>
+  </div>
+
+  <!-- ─────────────────────────────────── -->
+  <!-- SECTION: APP STORE PATH -->
+  <!-- ─────────────────────────────────── -->
+  <div class="section" id="section-appstore">
+    <div class="section-title">Path to App Store <span class="stag">5.5 / 10</span></div>
+    <div class="section-desc">What's built for distribution, what's missing before you can submit to App Store Connect</div>
+
+    <div class="highlight-box red mb-24">
+      <div class="hb-title">⚠ Critical Gap — PrivacyInfo.xcprivacy Missing</div>
+      Apple has required a Privacy Manifest (PrivacyInfo.xcprivacy) for all apps since May 2024. Using Supabase-swift, PostHog, and PLCrashReporter means this file is non-optional. Without it, App Store Connect will reject your build. This is the single most important pre-submission addition.
+    </div>
+
+    <div class="grid-2 mb-24">
+      <div class="card" style="--card-accent: var(--green)">
+        <div class="card-title"><span class="dot"></span> App Store Foundations Present</div>
+        <div class="item-list">
+          <div class="item"><span class="icon">✅</span><div class="text"><strong>Sign in with Apple</strong> entitlement wired<span class="note">StarterApp.entitlements + AuthService.signInWithApple() fully implemented</span></div></div>
+          <div class="item"><span class="icon">✅</span><div class="text"><strong>Deep link URL scheme</strong> auto-derives from bundle ID<span class="note">Clever: rename bundle ID → scheme updates automatically</span></div></div>
+          <div class="item"><span class="icon">✅</span><div class="text"><strong>DEVELOPMENT_TEAM / CODE_SIGN_STYLE: Automatic</strong> in Project.swift<span class="note">Correct: Automatic signing means Xcode handles provisioning</span></div></div>
+          <div class="item"><span class="icon">✅</span><div class="text"><strong>MARKETING_VERSION / CURRENT_PROJECT_VERSION</strong> present in project settings<span class="note">Ready to be bumped via Fastlane or CI</span></div></div>
+          <div class="item"><span class="icon">✅</span><div class="text"><strong>iOS 17+ deployment target</strong> — sane modern floor, covers 95%+ of active devices</div></div>
+          <div class="item"><span class="icon">✅</span><div class="text"><strong>AppIcon 1024px asset catalog</strong> — slot exists, just needs actual artwork</div></div>
+          <div class="item"><span class="icon">✅</span><div class="text"><strong>Config-Release.xcconfig</strong> — separate production config file exists, well-commented</div></div>
+        </div>
+      </div>
+
+      <div class="card" style="--card-accent: var(--red)">
+        <div class="card-title"><span class="dot" style="background:var(--red)"></span> Missing Before Submission</div>
+        <div class="item-list">
+          <div class="item"><span class="icon">🔴</span><div class="text"><strong>PrivacyInfo.xcprivacy</strong> — required since May 2024<span class="note">Supabase-swift, PostHog, PLCrashReporter all require manifest entries</span></div></div>
+          <div class="item"><span class="icon">🔴</span><div class="text"><strong>No Fastlane / match</strong> — no automated signing, certificate, or TestFlight upload<span class="note">CODE_SIGNING_ALLOWED=NO in base settings means device builds need manual intervention</span></div></div>
+          <div class="item"><span class="icon">🔴</span><div class="text"><strong>No CI upload to TestFlight</strong> — ios-ci.yml only builds + tests, never archives<span class="note">No xcodebuild archive, exportArchive, or altool/xcrun notarytool step</span></div></div>
+          <div class="item"><span class="icon">🔴</span><div class="text"><strong>No App Store Connect API key setup</strong> — no docs or workflow for ASC_KEY_ID, ASC_ISSUER_ID<span class="note">Needed for automated uploads</span></div></div>
+          <div class="item"><span class="icon">🟡</span><div class="text"><strong>No export options plist</strong> — required for xcodebuild -exportArchive<span class="note">ExportOptions.plist defines method: app-store-connect, teamID, etc.</span></div></div>
+          <div class="item"><span class="icon">🟡</span><div class="text"><strong>Hardcoded CURRENT_PROJECT_VERSION = 1</strong> — no automated build number increment<span class="note">Should be sourced from CI run number or git tag</span></div></div>
+          <div class="item"><span class="icon">🟡</span><div class="text"><strong>No NSAppTransportSecurity</strong> exception for local dev URLs in debug builds<span class="note">http://127.0.0.1 works in Simulator but not device without ATS exception in debug config</span></div></div>
+          <div class="item"><span class="icon">🟡</span><div class="text"><strong>No screenshot / metadata pipeline</strong> — no fastlane deliver or ASO tooling<span class="note">Nice-to-have for a complete template</span></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-title" style="font-size:22px; margin-bottom:16px;">App Store Readiness Timeline</div>
+    <div class="timeline">
+      <div class="tl-item" style="--tl-color: var(--red)">
+        <div class="tl-label">Day 1 · Blocker</div>
+        <div class="tl-title">Add PrivacyInfo.xcprivacy</div>
+        <div class="tl-desc">Declare API usage for Supabase (NSNetworkVolume), PostHog (disk access), and PLCrashReporter. Apple rejects without this.</div>
+      </div>
+      <div class="tl-item" style="--tl-color: var(--orange)">
+        <div class="tl-label">Week 1 · Required</div>
+        <div class="tl-title">Fastlane match + archive workflow</div>
+        <div class="tl-desc">Add Fastfile with match (certs), gym (build), pilot (TestFlight). Wire a GitHub Actions job triggered on tag push.</div>
+      </div>
+      <div class="tl-item" style="--tl-color: var(--amber)">
+        <div class="tl-label">Week 1 · Required</div>
+        <div class="tl-title">App Store Connect API key secrets in CI</div>
+        <div class="tl-desc">Add ASC_KEY_ID, ASC_ISSUER_ID, ASC_PRIVATE_KEY to GitHub secrets. Document in local-setup.md.</div>
+      </div>
+      <div class="tl-item" style="--tl-color: var(--amber)">
+        <div class="tl-label">Week 1</div>
+        <div class="tl-title">ExportOptions.plist + version bump script</div>
+        <div class="tl-desc">Add ios/StarterApp/ExportOptions.plist. Make CURRENT_PROJECT_VERSION = $(CI_BUILD_NUMBER) or increment via agvtool.</div>
+      </div>
+      <div class="tl-item" style="--tl-color: var(--green)">
+        <div class="tl-label">Week 2 · Nice to have</div>
+        <div class="tl-title">Fastlane deliver for screenshots + metadata</div>
+        <div class="tl-desc">Add fastlane/metadata/ and fastlane/screenshots/ skeleton so template users can manage App Store listing from code.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─────────────────────────────────── -->
+  <!-- SECTION: CONVENTIONS -->
+  <!-- ─────────────────────────────────── -->
+  <div class="section" id="section-conventions">
+    <div class="section-title">Code Conventions <span class="stag">9.0 / 10</span></div>
+    <div class="section-desc">Architecture patterns, Swift idioms, naming, observability, and skeleton code quality</div>
+
+    <div class="grid-3 mb-32">
+      <div class="card" style="--card-accent: var(--green)">
+        <div class="card-title"><span class="dot"></span> Architecture</div>
+        <div class="item-list">
+          <div class="item"><span class="icon">✅</span><div class="text"><strong>@Observable + @State</strong> for ContentViewModel (modern Swift 5.9+)</div></div>
+          <div class="item"><span class="icon">✅</span><div class="text"><strong>@MainActor throughout</strong> AuthService — correct for UI-bound state</div></div>
+          <div class="item"><span class="icon">✅</span><div class="text"><strong>enum BackendAPIService</strong> — stateless namespace, no accidental shared state</div></div>
+          <div class="item"><span class="icon">✅</span><div class="text"><strong>Preview statics</strong> on AuthService — canonical SwiftUI preview pattern</div></div>
+          <div class="item"><span class="icon">✅</span><div class="text"><strong>defer { isLoading = false }</strong> — every async action guarantees cleanup</div></div>
+          <div class="item"><span class="icon">✅</span><div class="text"><strong>MARK: sections</strong> consistently used in all files</div></div>
+        </div>
+      </div>
+      <div class="card" style="--card-accent: var(--green)">
+        <div class="card-title"><span class="dot"></span> Config & Secrets</div>
+        <div class="item-list">
+          <div class="item"><span class="icon">✅</span><div class="text"><strong>xcconfig → Info.plist → APIConfig</strong> — clean compile-time injection, no hardcoded strings</div></div>
+          <div class="item"><span class="icon">✅</span><div class="text"><strong>https:/$()/</strong> xcconfig URL trick — documented inline, avoids double-slash parsing</div></div>
+          <div class="item"><span class="icon">✅</span><div class="text"><strong>authRedirectScheme derives from CFBundleURLTypes</strong> — rename-safe, zero duplication</div></div>
+          <div class="item"><span class="icon">✅</span><div class="text"><strong>fatalError on missing config</strong> — fails loudly at launch, not silently at runtime</div></div>
+          <div class="item"><span class="icon">✅</span><div class="text"><strong>Keychain session storage</strong> — correct for Supabase session persistence</div></div>
+        </div>
+      </div>
+      <div class="card" style="--card-accent: var(--green)">
+        <div class="card-title"><span class="dot"></span> Observability</div>
+        <div class="item-list">
+          <div class="item"><span class="icon">✅</span><div class="text"><strong>OSLog categories in AppLog</strong> — AppLog.auth, AppLog.general → subsystem-filtered logs</div></div>
+          <div class="item"><span class="icon">✅</span><div class="text"><strong>privacy: .public</strong> on all OSLog calls — no accidental PII in system logs</div></div>
+          <div class="item"><span class="icon">✅</span><div class="text"><strong>PostHog identify on session apply</strong> — analytics tied to auth lifecycle</div></div>
+          <div class="item"><span class="icon">✅</span><div class="text"><strong>App init log</strong> — logs Supabase host + PostHog status at startup</div></div>
+          <div class="item"><span class="icon">✅</span><div class="text"><strong>Deep link log</strong> — scheme + host logged on every URL open</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="section-title" style="font-size:22px; margin-bottom:16px;">Issues Worth Fixing</div>
+    <div class="grid-2 mb-24">
+      <div class="card" style="--card-accent: var(--amber)">
+        <div class="card-title"><span class="dot" style="background:var(--amber)"></span> Mixed Observability Pattern</div>
+        <div style="font-size:13px; color:var(--text); margin-bottom:10px;">
+          <code>AuthService</code> is <code>ObservableObject + @StateObject</code> in the App entry point, while <code>ContentViewModel</code> uses the modern <code>@Observable + @State</code>. These two patterns coexist — not a bug, but a template should be consistent so users know which to follow for new services.
+        </div>
+        <div class="highlight-box amber" style="margin:0">
+          <div class="hb-title">Recommendation</div>
+          Migrate AuthService to <code>@Observable</code> and use <code>@State</code> in the App entry point. Consistent pattern across the template removes the decision fatigue for users adding their own services.
+        </div>
+      </div>
+      <div class="card" style="--card-accent: var(--amber)">
+        <div class="card-title"><span class="dot" style="background:var(--amber)"></span> ContentView is Overloaded</div>
+        <div style="font-size:13px; color:var(--text); margin-bottom:10px;">
+          At 317 lines, <code>ContentView.swift</code> combines three demo domains (JWT test, profile CRUD, notes CRUD) with <code>ErrorBanner</code>, avatar helpers, and composer state. It demonstrates the pattern well but would be hard to clean up vs. follow.
+        </div>
+        <div class="highlight-box amber" style="margin:0">
+          <div class="hb-title">Recommendation</div>
+          Split into <code>Views/JWTTestView.swift</code>, <code>Views/ProfileView.swift</code>, <code>Views/NotesView.swift</code>. Move <code>ErrorBanner</code> to <code>Views/Components/ErrorBanner.swift</code>. Demonstrate the per-feature view + viewmodel pairing users will actually replicate.
+        </div>
+      </div>
+      <div class="card" style="--card-accent: var(--amber)">
+        <div class="card-title"><span class="dot" style="background:var(--amber)"></span> URLSession.shared in BackendAPIService</div>
+        <div style="font-size:13px; color:var(--text);">
+          <code>AuthService</code> creates a custom <code>URLSession</code> with 60s timeouts and <code>waitsForConnectivity: true</code>. <code>BackendAPIService</code> uses <code>URLSession.shared</code> — different timeout behaviour and no connectivity waiting. On a bad connection the backend calls may fail while Supabase calls succeed.
+        </div>
+      </div>
+      <div class="card" style="--card-accent: var(--amber)">
+        <div class="card-title"><span class="dot" style="background:var(--amber)"></span> Hardcoded Test Bundle IDs</div>
+        <div style="font-size:13px; color:var(--text);">
+          <code>Project.swift</code> has <code>bundleId: "com.example.StarterAppTests"</code> and <code>"com.example.StarterAppUITests"</code> hardcoded, while the main target uses the xcconfig-driven <code>$(PRODUCT_BUNDLE_IDENTIFIER)</code>. When a user renames their app, test targets stay on <code>com.example.*</code>.
+        </div>
+      </div>
+    </div>
+
+    <div class="highlight-box green">
+      <div class="hb-title">Overall Code Quality Assessment</div>
+      The Swift code is genuinely high-quality for a template. AuthService is thorough — expired session refresh, PostHog identity integration, Apple auth error mapping, and async-safe token caching are all handled correctly. The xcconfig → Info.plist → APIConfig pattern is textbook. The error message mapping in <code>userFacingMessage(for:)</code> is production-ready (substring matching documented, generic fallback, no raw SDK strings in UI). This is not typical boilerplate quality.
+    </div>
+  </div>
+
+  <!-- ─────────────────────────────────── -->
+  <!-- SECTION: DX -->
+  <!-- ─────────────────────────────────── -->
+  <div class="section" id="section-dx">
+    <div class="section-title">Developer Experience <span class="stag">8.0 / 10</span></div>
+    <div class="section-desc">Tooling, automation, local dev loop, CI pipeline, and day-to-day workflow quality</div>
+
+    <div class="grid-2 mb-24">
+      <div>
+        <div class="card mb-24" style="--card-accent: var(--green)">
+          <div class="card-title"><span class="dot"></span> Tooling Stack</div>
+          <div class="item-list">
+            <div class="item"><span class="icon">✅</span><div class="text"><strong>mise</strong> — Python 3.12, uv, Tuist 4.44.3, Supabase CLI 2.84.2 pinned<span class="note">CI and local guaranteed identical versions</span></div></div>
+            <div class="item"><span class="icon">✅</span><div class="text"><strong>Tuist 4.x</strong> — no committed .xcodeproj, reproducible project generation<span class="note">Project.swift as source of truth is the right call</span></div></div>
+            <div class="item"><span class="icon">✅</span><div class="text"><strong>SwiftLint strict mode</strong> in CI — lint blocks merge, not just warns<span class="note">Reasonable thresholds (120 line warn, 200 error)</span></div></div>
+            <div class="item"><span class="icon">✅</span><div class="text"><strong>.swift-format config</strong> — consistent formatting enforced</div></div>
+            <div class="item"><span class="icon">✅</span><div class="text"><strong>xcpretty</strong> — clean CI output, not raw xcodebuild noise</div></div>
+            <div class="item"><span class="icon">✅</span><div class="text"><strong>tuist cache</strong> in GitHub Actions — keyed on Package.swift hash</div></div>
+          </div>
+        </div>
+
+        <div class="card" style="--card-accent: var(--green)">
+          <div class="card-title"><span class="dot"></span> CI Pipeline Quality</div>
+          <div class="item-list">
+            <div class="item"><span class="icon">✅</span><div class="text"><strong>UDID selection via Python</strong> — sorted by runtime version, picks highest iPhone 16<span class="note">Avoids ambiguous simulator matches on runner updates</span></div></div>
+            <div class="item"><span class="icon">✅</span><div class="text"><strong>xcconfig generated from example in CI</strong> — no secrets needed, build still works</div></div>
+            <div class="item"><span class="icon">✅</span><div class="text"><strong>concurrency cancel-in-progress</strong> — no stacked CI builds on push</div></div>
+            <div class="item"><span class="icon">✅</span><div class="text"><strong>build-for-testing → test-without-building</strong> split — correct xcodebuild testing pattern</div></div>
+            <div class="item"><span class="icon">✅</span><div class="text"><strong>path filters on push</strong> — only triggers on ios/** and workflow changes</div></div>
+            <div class="item"><span class="icon">✅</span><div class="text"><strong>workflow_dispatch</strong> — manual trigger available</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="card mb-24" style="--card-accent: var(--amber)">
+          <div class="card-title"><span class="dot" style="background:var(--amber)"></span> DX Gaps</div>
+          <div class="item-list">
+            <div class="item"><span class="icon">🟡</span><div class="text"><strong>No make ios-test target</strong> — have to remember xcodebuild invocation manually<span class="note">make ios-gen exists but no make ios-test or make ios-lint</span></div></div>
+            <div class="item"><span class="icon">🟡</span><div class="text"><strong>No pre-commit hook for SwiftLint</strong> — runs in CI but not before push<span class="note">A .mise.toml hook or simple Makefile target could run swiftlint on changed Swift files</span></div></div>
+            <div class="item"><span class="icon">🟡</span><div class="text"><strong>UI tests excluded from CI test step</strong> — -only-testing:StarterAppTests means UITests never run in CI<span class="note">Even placeholder UI tests should run — currently invisible failures</span></div></div>
+            <div class="item"><span class="icon">🟡</span><div class="text"><strong>No xcresult artifact upload</strong> — test failures in CI have no downloadable report<span class="note">Add: actions/upload-artifact with path **/*.xcresult</span></div></div>
+            <div class="item"><span class="icon">🟡</span><div class="text"><strong>gem install xcpretty on every CI run</strong> — not cached, adds ~15s to each run<span class="note">Cache Ruby gems or use xcbeautify (pre-installed on macos-15)</span></div></div>
+            <div class="item"><span class="icon">🟡</span><div class="text"><strong>No SWIFT_STRICT_CONCURRENCY=complete</strong> — project has SWIFT_DEFAULT_ACTOR_ISOLATION=MainActor which is strong but concurrency checking isn't maximally strict<span class="note">Consider adding for new projects shipping on iOS 17+</span></div></div>
+          </div>
+        </div>
+
+        <div class="card" style="--card-accent: var(--accent)">
+          <div class="card-title"><span class="dot"></span> Quick DX Wins</div>
+<div class="code-block"><span class="cmt"># Add to Makefile</span>
+<span class="fn">ios-test</span>: <span class="cmt">## Run iOS unit tests on Simulator</span>
+    cd ios/StarterApp && <span class="kw">tuist</span> test
+
+<span class="fn">ios-lint</span>: <span class="cmt">## SwiftLint check</span>
+    cd ios/StarterApp && <span class="kw">swiftlint</span> lint --strict
+
+<span class="fn">ios-format</span>: <span class="cmt">## swift-format check</span>
+    <span class="kw">swift-format</span> lint -r ios/StarterApp/StarterApp</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="highlight-box accent">
+      <div class="hb-title">Outstanding: dev.sh Auto-Config</div>
+      The <code>configure_ios_xcconfig</code> bash function in <code>_lib.sh</code> that patches Config-Debug.xcconfig with live Supabase URLs + anon key after <code>supabase start</code> is genuinely excellent DX. This eliminates the #1 new-user error (wrong URL in xcconfig) entirely. The fact it also handles the <code>http://$()/</code> xcconfig URL escaping correctly shows real attention to detail.
+    </div>
+  </div>
+
+  <!-- ─────────────────────────────────── -->
+  <!-- SECTION: AGENT X -->
+  <!-- ─────────────────────────────────── -->
+  <div class="section" id="section-agentx">
+    <div class="section-title">Agent·X Readiness <span class="stag">3.0 / 10</span></div>
+    <div class="section-desc">How well the template is set up for AI agent workflows — .cursor/rules, AGENTS.md, MCPs, CLIs, and agent context</div>
+
+    <div class="highlight-box red mb-32">
+      <div class="hb-title">Current State: Zero Agent Infrastructure</div>
+      No <code>.cursor/rules/</code>, no <code>AGENTS.md</code>, no <code>.agent/</code> directory, no MCP configs, no agent-specific context. An agent dropped into this repo has no guidance on Tuist conventions, the generated-file boundaries, which make commands to use, or the stack architecture. This is the biggest gap for the next evolution of this template.
+    </div>
+
+    <div class="agent-grid mb-32">
+      <div class="agent-tile" style="--tile-color: rgba(244,63,94,0.1)">
+        <div class="at-icon">📋</div>
+        <div class="at-title">.cursor/rules/</div>
+        <div class="at-status" style="color:var(--red)">Missing</div>
+        <div class="at-desc">No Cursor rules for iOS, backend, or general repo conventions. Agents guess at architecture, edit generated files, use wrong patterns.</div>
+      </div>
+      <div class="agent-tile" style="--tile-color: rgba(244,63,94,0.1)">
+        <div class="at-icon">🤖</div>
+        <div class="at-title">AGENTS.md</div>
+        <div class="at-status" style="color:var(--red)">Missing</div>
+        <div class="at-desc">No OpenAI/Anthropic-style AGENTS.md with repo mental model, common tasks, and do/don't rules.</div>
+      </div>
+      <div class="agent-tile" style="--tile-color: rgba(244,63,94,0.1)">
+        <div class="at-icon">🗂️</div>
+        <div class="at-title">.agent/ directory</div>
+        <div class="at-status" style="color:var(--red)">Missing</div>
+        <div class="at-desc">No agent context files, prompt templates, or task playbooks for common operations like "add a route" or "add an iOS screen".</div>
+      </div>
+      <div class="agent-tile" style="--tile-color: rgba(244,63,94,0.1)">
+        <div class="at-icon">🔌</div>
+        <div class="at-title">MCP Config</div>
+        <div class="at-status" style="color:var(--red)">Missing</div>
+        <div class="at-desc">No .mcp.json or Supabase MCP config. Agents can't query the local DB, inspect schema, or run migrations through a tool.</div>
+      </div>
+      <div class="agent-tile" style="--tile-color: rgba(255,176,32,0.1)">
+        <div class="at-icon">🛠️</div>
+        <div class="at-title">CLI Tools</div>
+        <div class="at-status" style="color:var(--amber)">Partial</div>
+        <div class="at-desc">mise + make cover most ops but no agent-friendly task discovery. <code>make help</code> exists but doesn't cover iOS test/lint/format tasks.</div>
+      </div>
+      <div class="agent-tile" style="--tile-color: rgba(255,176,32,0.1)">
+        <div class="at-icon">📚</div>
+        <div class="at-title">Agent Context</div>
+        <div class="at-status" style="color:var(--amber)">Weak</div>
+        <div class="at-desc">README is great for humans but not structured for agents. No explicit "do not edit Derived/, .xcodeproj, GeneratedModels.swift" signals.</div>
+      </div>
+    </div>
+
+    <div class="section-title" style="font-size:22px; margin-bottom:20px;">Recommended Agent Infrastructure</div>
+
+    <div class="grid-2 mb-24">
+      <div class="card" style="--card-accent: var(--purple)">
+        <div class="card-title"><span class="dot" style="background:var(--purple)"></span> .cursor/rules/ — 3 files</div>
+        <div class="code-block"><span class="cmt"># .cursor/rules/ios.mdc</span>
+<span class="kw">globs:</span> <span class="str">ios/**</span>
+
+<span class="fn">NEVER</span> edit these files directly:
+  - <span class="str">*.xcodeproj</span>, <span class="str">*.xcworkspace</span>
+  - <span class="str">Derived/</span> (generated by tuist)
+  - <span class="str">Models/GeneratedModels.swift</span> (run make sync-models)
+
+<span class="fn">Adding Swift files:</span> just create them under StarterApp/
+  Tuist picks up <span class="str">StarterApp/**/*.swift</span> automatically.
+  Run <span class="str">make ios-gen</span> after structural changes.
+
+<span class="fn">New service pattern:</span> @Observable + @MainActor
+<span class="fn">New view pattern:</span> @State private var vm = MyViewModel()
+
+<span class="fn">Config changes:</span> edit xcconfig files, not Swift</div>
+      </div>
+      <div class="card" style="--card-accent: var(--purple)">
+        <div class="card-title"><span class="dot" style="background:var(--purple)"></span> AGENTS.md — repo entry point</div>
+        <div class="code-block"><span class="cmt"># AGENTS.md</span>
+<span class="kw">## Stack</span>
+iOS (SwiftUI, Tuist) + FastAPI (Python, uv)
++ Supabase (Postgres, Auth, RLS)
+
+<span class="kw">## Common tasks</span>
+Add backend route: backend/app/api/v1/ → router.py
+Add iOS screen:    ios/StarterApp/StarterApp/Views/
+Sync models:       make sync-models
+Regen project:     make ios-gen
+Run all tests:     make test (backend) / make ios-test
+
+<span class="kw">## Do NOT touch</span>
+- Generated: Derived/, *.xcodeproj, GeneratedModels.swift
+- Secrets:   Config-Debug/Release.xcconfig (gitignored)
+
+<span class="kw">## Architecture rules</span>
+- Services are @Observable @MainActor final class
+- No business logic in Views — use ViewModels</div>
+      </div>
+      <div class="card" style="--card-accent: var(--purple)">
+        <div class="card-title"><span class="dot" style="background:var(--purple)"></span> .mcp.json — Supabase MCP</div>
+        <div class="code-block"><span class="cmt">// .mcp.json (or .cursor/mcp.json)</span>
+{
+  <span class="str">"mcpServers"</span>: {
+    <span class="str">"supabase"</span>: {
+      <span class="str">"command"</span>: <span class="str">"npx"</span>,
+      <span class="str">"args"</span>: [<span class="str">"@supabase/mcp-server-supabase@latest"</span>],
+      <span class="str">"env"</span>: {
+        <span class="str">"SUPABASE_ACCESS_TOKEN"</span>: <span class="str">"${SUPABASE_ACCESS_TOKEN}"</span>,
+        <span class="str">"SUPABASE_PROJECT_REF"</span>: <span class="str">"${SUPABASE_PROJECT_REF}"</span>
+      }
+    }
+  }
+}</div>
+        <div style="font-size:12px; color:var(--text-dim); margin-top:8px;">Gives agents: schema inspection, RLS policy reading, migration generation, query execution</div>
+      </div>
+      <div class="card" style="--card-accent: var(--purple)">
+        <div class="card-title"><span class="dot" style="background:var(--purple)"></span> .agent/ — task playbooks</div>
+        <div class="item-list">
+          <div class="item"><span class="icon">📄</span><div class="text"><strong>.agent/add-backend-route.md</strong><span class="note">Step-by-step: schema → repo → service → router → test → sync-models</span></div></div>
+          <div class="item"><span class="icon">📄</span><div class="text"><strong>.agent/add-ios-screen.md</strong><span class="note">ViewModel (+ @Observable) → View → wire in ContentView/NavigationStack</span></div></div>
+          <div class="item"><span class="icon">📄</span><div class="text"><strong>.agent/add-migration.md</strong><span class="note">supabase migration new → write SQL → supabase db reset → verify</span></div></div>
+          <div class="item"><span class="icon">📄</span><div class="text"><strong>.agent/context.md</strong><span class="note">Tech stack, auth flow diagram, RLS rules, local ports, key env vars</span></div></div>
+          <div class="item"><span class="icon">📄</span><div class="text"><strong>.agent/skills/</strong><span class="note">Cursor skill files for "add route", "add screen", "write migration"</span></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="highlight-box purple">
+      <div class="hb-title">Why This Matters for AgentX</div>
+      Without <code>.cursor/rules/ios.mdc</code>, agents will try to edit <code>StarterApp.xcodeproj/project.pbxproj</code> to add files instead of just creating Swift files. They'll edit <code>GeneratedModels.swift</code> instead of running <code>make sync-models</code>. They'll create ObservableObject services instead of @Observable ones. These aren't hypothetical — they're exactly what LLMs do without explicit guidance. The 30 minutes to write three rule files pays dividends on every agentic task.
+    </div>
+  </div>
+
+  <!-- ─────────────────────────────────── -->
+  <!-- SECTION: NEXT STEPS -->
+  <!-- ─────────────────────────────────── -->
+  <div class="section" id="section-actions">
+    <div class="section-title">Prioritised Next Steps <span class="stag">Action Plan</span></div>
+    <div class="section-desc">Ordered by impact / effort. P1 = ship blocker, P2 = high leverage, P3 = polish</div>
+
+    <table class="priority-table mb-32">
+      <thead>
+        <tr>
+          <th>PRI</th>
+          <th>Task</th>
+          <th>Category</th>
+          <th>Effort</th>
+          <th>Impact</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="pri" style="color:var(--red)">P1</span></td>
+          <td><strong>Add PrivacyInfo.xcprivacy</strong><br/><span style="font-size:11px;color:var(--text-dim)">Declare Supabase, PostHog, PLCrashReporter API usage. Required for App Store submission since May 2024.</span></td>
+          <td><span class="badge badge-red">App Store</span></td>
+          <td>30 min</td>
+          <td>🔴 Blocker</td>
+        </tr>
+        <tr>
+          <td><span class="pri" style="color:var(--purple)">P1</span></td>
+          <td><strong>Add .cursor/rules/ (3 files)</strong><br/><span style="font-size:11px;color:var(--text-dim)">ios.mdc, backend.mdc, general.mdc. Prevents agents editing generated files and enforces architectural patterns.</span></td>
+          <td><span class="badge badge-purple">AgentX</span></td>
+          <td>1–2 hr</td>
+          <td>🟣 High</td>
+        </tr>
+        <tr>
+          <td><span class="pri" style="color:var(--purple)">P1</span></td>
+          <td><strong>Add AGENTS.md + .agent/ directory</strong><br/><span style="font-size:11px;color:var(--text-dim)">Repo mental model, do/don't rules, common task playbooks, stack context for agentic workflows.</span></td>
+          <td><span class="badge badge-purple">AgentX</span></td>
+          <td>2–3 hr</td>
+          <td>🟣 High</td>
+        </tr>
+        <tr>
+          <td><span class="pri" style="color:var(--red)">P1</span></td>
+          <td><strong>Add Fastlane + TestFlight CI workflow</strong><br/><span style="font-size:11px;color:var(--text-dim)">Fastfile with match/gym/pilot. GitHub Actions job on tag push to distribute builds.</span></td>
+          <td><span class="badge badge-red">App Store</span></td>
+          <td>3–4 hr</td>
+          <td>🔴 High</td>
+        </tr>
+        <tr>
+          <td><span class="pri" style="color:var(--orange)">P2</span></td>
+          <td><strong>Add make rename script</strong><br/><span style="font-size:11px;color:var(--text-dim)">Single script to replace bundle ID, team ID, and app name across xcconfig, Project.swift, and supabase/config.toml.</span></td>
+          <td><span class="badge badge-accent">Usability</span></td>
+          <td>1 hr</td>
+          <td>🟠 High</td>
+        </tr>
+        <tr>
+          <td><span class="pri" style="color:var(--orange)">P2</span></td>
+          <td><strong>Add .mcp.json with Supabase MCP</strong><br/><span style="font-size:11px;color:var(--text-dim)">Enable agents to inspect schema, read RLS, generate migrations, and query DB directly from Cursor.</span></td>
+          <td><span class="badge badge-purple">AgentX</span></td>
+          <td>30 min</td>
+          <td>🟠 High</td>
+        </tr>
+        <tr>
+          <td><span class="pri" style="color:var(--orange)">P2</span></td>
+          <td><strong>Split ContentView.swift into per-feature views</strong><br/><span style="font-size:11px;color:var(--text-dim)">JWTTestView, ProfileView, NotesView. Move ErrorBanner to Components/. Shows the pattern users actually replicate.</span></td>
+          <td><span class="badge badge-green">Conventions</span></td>
+          <td>1–2 hr</td>
+          <td>🟠 Medium</td>
+        </tr>
+        <tr>
+          <td><span class="pri" style="color:var(--orange)">P2</span></td>
+          <td><strong>Migrate AuthService to @Observable</strong><br/><span style="font-size:11px;color:var(--text-dim)">Remove ObservableObject/Published. Consistent modern Swift pattern across all services in the template.</span></td>
+          <td><span class="badge badge-green">Conventions</span></td>
+          <td>1–2 hr</td>
+          <td>🟠 Medium</td>
+        </tr>
+        <tr>
+          <td><span class="pri" style="color:var(--orange)">P2</span></td>
+          <td><strong>Add make ios-test, ios-lint, ios-format targets</strong><br/><span style="font-size:11px;color:var(--text-dim)">Agents and developers shouldn't need to remember xcodebuild flags.</span></td>
+          <td><span class="badge badge-amber">DX</span></td>
+          <td>30 min</td>
+          <td>🟠 Medium</td>
+        </tr>
+        <tr>
+          <td><span class="pri" style="color:var(--amber)">P3</span></td>
+          <td><strong>Add xcresult artifact upload to CI</strong><br/><span style="font-size:11px;color:var(--text-dim)">Upload test reports as GitHub Actions artifacts for downloadable failure inspection.</span></td>
+          <td><span class="badge badge-amber">DX</span></td>
+          <td>20 min</td>
+          <td>🟡 Low</td>
+        </tr>
+        <tr>
+          <td><span class="pri" style="color:var(--amber)">P3</span></td>
+          <td><strong>Fix hardcoded test bundle IDs in Project.swift</strong><br/><span style="font-size:11px;color:var(--text-dim)">Use $(PRODUCT_BUNDLE_IDENTIFIER).Tests and .UITests so rename script covers tests too.</span></td>
+          <td><span class="badge badge-green">Conventions</span></td>
+          <td>10 min</td>
+          <td>🟡 Low</td>
+        </tr>
+        <tr>
+          <td><span class="pri" style="color:var(--amber)">P3</span></td>
+          <td><strong>Cache xcpretty / switch to xcbeautify</strong><br/><span style="font-size:11px;color:var(--text-dim)">xcbeautify is pre-installed on macos-15 runners. Saves ~15s per CI run.</span></td>
+          <td><span class="badge badge-amber">DX</span></td>
+          <td>5 min</td>
+          <td>🟡 Low</td>
+        </tr>
+        <tr>
+          <td><span class="pri" style="color:var(--amber)">P3</span></td>
+          <td><strong>Use shared URLSession in BackendAPIService</strong><br/><span style="font-size:11px;color:var(--text-dim)">Inject or share the same URLSession with timeouts from AuthService for consistent network behaviour.</span></td>
+          <td><span class="badge badge-green">Conventions</span></td>
+          <td>30 min</td>
+          <td>🟡 Low</td>
+        </tr>
+        <tr>
+          <td><span class="pri" style="color:var(--amber)">P3</span></td>
+          <td><strong>Expand ios/README.md</strong><br/><span style="font-size:11px;color:var(--text-dim)">Add Tuist gotchas, new file workflow, adding SPM deps, physical device signing, simulator tips.</span></td>
+          <td><span class="badge badge-accent">Usability</span></td>
+          <td>30 min</td>
+          <td>🟡 Low</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="grid-2">
+      <div class="highlight-box green">
+        <div class="hb-title">What to be proud of</div>
+        The make dev one-command stack, xcconfig auto-population, sync_models.py, AuthService quality (expired session refresh, PostHog integration, error mapping), and the CI pipeline are genuinely impressive for a template. The Tuist setup with static framework workaround documented is professional-grade. This is not boilerplate — it's a real engineering baseline.
+      </div>
+      <div class="highlight-box purple">
+        <div class="hb-title">The AgentX opportunity</div>
+        This template is well-positioned to become a leading AI-native iOS starter. The structured make commands, clear file boundaries (generated vs. authored), and consistent patterns are exactly what agents need. Adding .cursor/rules, AGENTS.md, .agent/ playbooks, and Supabase MCP config turns it from "great for humans" into "great for agents too". The skeleton is already agent-friendly — it just needs the explicit documentation layer.
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // Tab switching
+  document.querySelectorAll('.score-card').forEach(card => {
+    card.addEventListener('click', () => {
+      document.querySelectorAll('.score-card').forEach(c => c.classList.remove('active'));
+      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+      card.classList.add('active');
+      const section = document.getElementById('section-' + card.dataset.section);
+      if (section) section.classList.add('active');
+    });
+  });
+
+  // Animate progress bars on section switch
+  function animateBars() {
+    document.querySelectorAll('.progress-fill').forEach(bar => {
+      const w = bar.style.width;
+      bar.style.width = '0';
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => { bar.style.width = w; });
+      });
+    });
+  }
+  document.querySelectorAll('.score-card').forEach(card => {
+    card.addEventListener('click', () => setTimeout(animateBars, 100));
+  });
+</script>
+</body>
+</html>

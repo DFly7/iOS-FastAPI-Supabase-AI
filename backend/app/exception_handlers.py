@@ -12,6 +12,8 @@ from postgrest.exceptions import APIError as PostgrestAPIError
 from slowapi.errors import RateLimitExceeded
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from app.exceptions import NotesLimitExceeded
+
 logger = structlog.get_logger(__name__)
 
 
@@ -193,8 +195,33 @@ async def postgrest_api_error_handler(request: Request, exc: PostgrestAPIError) 
     )
 
 
+async def notes_limit_exceeded_handler(request: Request, exc: NotesLimitExceeded) -> JSONResponse:
+    request_id = getattr(request.state, "request_id", "unknown")
+    user_id = getattr(request.state, "user_id", None)
+
+    logger.warning(
+        "notes_limit_exceeded",
+        method=request.method,
+        path=str(request.url.path),
+        request_id=request_id,
+        user_id=user_id,
+        limit=exc.limit,
+    )
+
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content={
+            "error": str(exc),
+            "status_code": status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "request_id": request_id,
+        },
+        headers={"X-Request-ID": request_id},
+    )
+
+
 def register_exception_handlers(app) -> None:
     app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
+    app.add_exception_handler(NotesLimitExceeded, notes_limit_exceeded_handler)
     app.add_exception_handler(StarletteHTTPException, http_exception_handler)
     app.add_exception_handler(RequestValidationError, validation_exception_handler)
     app.add_exception_handler(PostgrestAPIError, postgrest_api_error_handler)

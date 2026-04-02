@@ -1,5 +1,27 @@
-# Aggregate v1 routes. Add feature routers with api_router.include_router(...).
-# To protect all v1 routes: APIRouter(dependencies=[Depends(verify_jwt)])
+"""Aggregate v1 routes.
+
+Route handler convention — async def
+--------------------------------------
+All handlers that touch Supabase use ``async def`` and ``await`` every
+``.execute()`` call.  The project uses ``acreate_client`` (the async Supabase
+client), so the event loop is never blocked by database I/O.
+
+Pure utility handlers (``/ping``) that do no I/O keep plain ``def`` — there
+is nothing to await and FastAPI handles both in the same event loop without
+any thread-pool overhead for coroutine-free handlers.
+
+Router organisation — inline routes vs feature sub-routers
+-----------------------------------------------------------
+Simple utility endpoints (``/ping``, ``/secure-test``, ``/me/profile``) live
+here inline so the file doubles as a quick reference for common patterns.
+
+For any non-trivial feature — multiple endpoints, its own service layer, or
+its own tests — create a dedicated sub-router file (see ``notes.py``) and
+mount it with ``api_router.include_router(...)``.  Prefer sub-routers for
+feature #2 and beyond; inline routes are the exception, not the template.
+
+To protect all v1 routes: APIRouter(dependencies=[Depends(verify_jwt)])
+"""
 
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -19,7 +41,7 @@ def ping() -> dict:
 
 
 @api_router.get("/secure-test")
-def secure_test(auth_data: dict = Depends(verify_jwt)) -> dict:
+async def secure_test(auth_data: dict = Depends(verify_jwt)) -> dict:
     return {
         "message": "Token valid",
         "user_id": auth_data["payload"].get("sub"),
@@ -27,13 +49,15 @@ def secure_test(auth_data: dict = Depends(verify_jwt)) -> dict:
 
 
 @api_router.get("/me/profile", response_model=ProfileOut)
-def get_my_profile(auth: AuthenticatedClient = Depends(get_authenticated_client)) -> ProfileOut:
+async def get_my_profile(
+    auth: AuthenticatedClient = Depends(get_authenticated_client),
+) -> ProfileOut:
     """Load the signed-in user's row from `public.profiles`.
 
     RLS is enforced via the user's JWT on PostgREST.
     """
     user_id = auth.payload["sub"]
-    res = (
+    res = await (
         auth.client.table("profiles")
         .select("id, display_name, avatar_url, created_at")
         .eq("id", user_id)
@@ -53,7 +77,7 @@ def get_my_profile(auth: AuthenticatedClient = Depends(get_authenticated_client)
 
 
 @api_router.patch("/me/profile", response_model=ProfileOut)
-def update_my_profile(
+async def update_my_profile(
     payload: ProfileUpdate,
     auth: AuthenticatedClient = Depends(get_authenticated_client),
 ) -> ProfileOut:
@@ -69,7 +93,7 @@ def update_my_profile(
             status_code=422,
             detail="Request body must include at least one field to update.",
         )
-    res = (
+    res = await (
         auth.client.table("profiles")
         .update(changes)
         .eq("id", user_id)

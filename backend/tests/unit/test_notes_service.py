@@ -5,11 +5,12 @@ each test patches the repository layer so the service is tested in total
 isolation — no HTTP server, no real Supabase client.
 
 Pattern: patch `app.services.notes_service.notes_repo` (the module reference
-inside the service) so calls to notes_repo.* are intercepted by MagicMock.
+inside the service) so calls to notes_repo.* are intercepted by AsyncMock,
+matching the async repo interface.
 """
 
 from datetime import datetime, timezone
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import UUID
 
 import pytest
@@ -46,20 +47,22 @@ def mock_client() -> MagicMock:
 
 
 class TestListUserNotes:
-    def test_delegates_to_repo_with_correct_args(self, mock_client: MagicMock) -> None:
+    async def test_delegates_to_repo_with_correct_args(self, mock_client: MagicMock) -> None:
         with patch("app.services.notes_service.notes_repo") as mock_repo:
-            mock_repo.list_notes.return_value = [_SAMPLE_NOTE]
+            mock_repo.list_notes = AsyncMock(return_value=[_SAMPLE_NOTE])
 
-            result = notes_service.list_user_notes(mock_client, USER_ID)
+            result = await notes_service.list_user_notes(mock_client, USER_ID)
 
             mock_repo.list_notes.assert_called_once_with(mock_client, USER_ID)
             assert result == [_SAMPLE_NOTE]
 
-    def test_returns_empty_list_when_repo_returns_none_data(self, mock_client: MagicMock) -> None:
+    async def test_returns_empty_list_when_repo_returns_none_data(
+        self, mock_client: MagicMock
+    ) -> None:
         with patch("app.services.notes_service.notes_repo") as mock_repo:
-            mock_repo.list_notes.return_value = []
+            mock_repo.list_notes = AsyncMock(return_value=[])
 
-            result = notes_service.list_user_notes(mock_client, USER_ID)
+            result = await notes_service.list_user_notes(mock_client, USER_ID)
 
             assert result == []
 
@@ -70,20 +73,20 @@ class TestListUserNotes:
 
 
 class TestGetUserNote:
-    def test_returns_note_when_found(self, mock_client: MagicMock) -> None:
+    async def test_returns_note_when_found(self, mock_client: MagicMock) -> None:
         with patch("app.services.notes_service.notes_repo") as mock_repo:
-            mock_repo.get_note.return_value = _SAMPLE_NOTE
+            mock_repo.get_note = AsyncMock(return_value=_SAMPLE_NOTE)
 
-            result = notes_service.get_user_note(mock_client, NOTE_ID, USER_ID)
+            result = await notes_service.get_user_note(mock_client, NOTE_ID, USER_ID)
 
             mock_repo.get_note.assert_called_once_with(mock_client, NOTE_ID, USER_ID)
             assert result == _SAMPLE_NOTE
 
-    def test_returns_none_when_not_found(self, mock_client: MagicMock) -> None:
+    async def test_returns_none_when_not_found(self, mock_client: MagicMock) -> None:
         with patch("app.services.notes_service.notes_repo") as mock_repo:
-            mock_repo.get_note.return_value = None
+            mock_repo.get_note = AsyncMock(return_value=None)
 
-            result = notes_service.get_user_note(mock_client, NOTE_ID, USER_ID)
+            result = await notes_service.get_user_note(mock_client, NOTE_ID, USER_ID)
 
             assert result is None
 
@@ -94,23 +97,25 @@ class TestGetUserNote:
 
 
 class TestCreateUserNote:
-    def test_delegates_to_repo_and_returns_created_note(self, mock_client: MagicMock) -> None:
+    async def test_delegates_to_repo_and_returns_created_note(
+        self, mock_client: MagicMock
+    ) -> None:
         payload = NoteIn(title="New note", body=None)
 
         with patch("app.services.notes_service.notes_repo") as mock_repo:
-            mock_repo.create_note.return_value = _SAMPLE_NOTE
+            mock_repo.create_note = AsyncMock(return_value=_SAMPLE_NOTE)
 
-            result = notes_service.create_user_note(mock_client, USER_ID, payload)
+            result = await notes_service.create_user_note(mock_client, USER_ID, payload)
 
             mock_repo.create_note.assert_called_once_with(mock_client, USER_ID, payload)
             assert result == _SAMPLE_NOTE
 
-    def test_payload_title_and_body_are_forwarded(self, mock_client: MagicMock) -> None:
+    async def test_payload_title_and_body_are_forwarded(self, mock_client: MagicMock) -> None:
         payload = NoteIn(title="Title", body="Body text")
 
         with patch("app.services.notes_service.notes_repo") as mock_repo:
-            mock_repo.create_note.return_value = _SAMPLE_NOTE
-            notes_service.create_user_note(mock_client, USER_ID, payload)
+            mock_repo.create_note = AsyncMock(return_value=_SAMPLE_NOTE)
+            await notes_service.create_user_note(mock_client, USER_ID, payload)
 
             _, _, forwarded_payload = mock_repo.create_note.call_args[0]
             assert forwarded_payload.title == "Title"
@@ -123,26 +128,28 @@ class TestCreateUserNote:
 
 
 class TestUpdateUserNote:
-    def test_delegates_to_repo_and_returns_updated_note(self, mock_client: MagicMock) -> None:
+    async def test_delegates_to_repo_and_returns_updated_note(
+        self, mock_client: MagicMock
+    ) -> None:
         payload = NoteUpdate(title="Updated")
 
         with patch("app.services.notes_service.notes_repo") as mock_repo:
             updated = NoteOut(**{**_SAMPLE_NOTE.model_dump(), "title": "Updated"})
-            mock_repo.update_note.return_value = updated
+            mock_repo.update_note = AsyncMock(return_value=updated)
 
-            result = notes_service.update_user_note(mock_client, NOTE_ID, USER_ID, payload)
+            result = await notes_service.update_user_note(mock_client, NOTE_ID, USER_ID, payload)
 
             mock_repo.update_note.assert_called_once_with(mock_client, NOTE_ID, USER_ID, payload)
             assert result is not None
             assert result.title == "Updated"
 
-    def test_returns_none_when_note_not_found(self, mock_client: MagicMock) -> None:
+    async def test_returns_none_when_note_not_found(self, mock_client: MagicMock) -> None:
         payload = NoteUpdate(title="Ghost")
 
         with patch("app.services.notes_service.notes_repo") as mock_repo:
-            mock_repo.update_note.return_value = None
+            mock_repo.update_note = AsyncMock(return_value=None)
 
-            result = notes_service.update_user_note(mock_client, NOTE_ID, USER_ID, payload)
+            result = await notes_service.update_user_note(mock_client, NOTE_ID, USER_ID, payload)
 
             assert result is None
 
@@ -153,19 +160,19 @@ class TestUpdateUserNote:
 
 
 class TestDeleteUserNote:
-    def test_returns_true_when_note_deleted(self, mock_client: MagicMock) -> None:
+    async def test_returns_true_when_note_deleted(self, mock_client: MagicMock) -> None:
         with patch("app.services.notes_service.notes_repo") as mock_repo:
-            mock_repo.delete_note.return_value = True
+            mock_repo.delete_note = AsyncMock(return_value=True)
 
-            result = notes_service.delete_user_note(mock_client, NOTE_ID, USER_ID)
+            result = await notes_service.delete_user_note(mock_client, NOTE_ID, USER_ID)
 
             mock_repo.delete_note.assert_called_once_with(mock_client, NOTE_ID, USER_ID)
             assert result is True
 
-    def test_returns_false_when_note_not_found(self, mock_client: MagicMock) -> None:
+    async def test_returns_false_when_note_not_found(self, mock_client: MagicMock) -> None:
         with patch("app.services.notes_service.notes_repo") as mock_repo:
-            mock_repo.delete_note.return_value = False
+            mock_repo.delete_note = AsyncMock(return_value=False)
 
-            result = notes_service.delete_user_note(mock_client, NOTE_ID, USER_ID)
+            result = await notes_service.delete_user_note(mock_client, NOTE_ID, USER_ID)
 
             assert result is False
