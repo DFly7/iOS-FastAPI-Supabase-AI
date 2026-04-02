@@ -272,6 +272,35 @@ final class AuthService: ObservableObject {
         friendlyMessage(for: error)
     }
 
+    /// Substring heuristics for Supabase ``AuthError`` / server messages (already lowercased).
+    private static func supabaseUserFacingMessage(normalizedDescription raw: String) -> String? {
+        if raw.contains("invalid login credentials") || raw.contains("invalid email or password") {
+            return "Incorrect email or password."
+        }
+        if raw.contains("email not confirmed") {
+            return "Please confirm your email address before signing in."
+        }
+        if raw.contains("user already registered") || raw.contains("email address is already") {
+            return "An account with this email already exists."
+        }
+        if raw.contains("password should be at least") || raw.contains("password is too short") {
+            return "Password must be at least 6 characters."
+        }
+        if raw.contains("jwt expired") || raw.contains("session expired") {
+            return "Your session has expired. Please sign in again."
+        }
+        if raw.contains("rate limit") || raw.contains("too many requests") {
+            return "Too many attempts. Please wait a moment and try again."
+        }
+        if raw.contains("signup is disabled") {
+            return "New registrations are currently disabled."
+        }
+        if raw.contains("invalid email") {
+            return "Please enter a valid email address."
+        }
+        return nil
+    }
+
     /// Maps raw Supabase / network / Sign in with Apple errors to short strings.
     ///
     /// Supabase SDK errors echo server text (e.g. "Invalid login credentials").
@@ -300,30 +329,8 @@ final class AuthService: ObservableObject {
         // server message verbatim. Match on stable substrings rather than the
         // full string so minor wording changes on the server don't break this.
         let raw = error.localizedDescription.lowercased()
-
-        if raw.contains("invalid login credentials") || raw.contains("invalid email or password") {
-            return "Incorrect email or password."
-        }
-        if raw.contains("email not confirmed") {
-            return "Please confirm your email address before signing in."
-        }
-        if raw.contains("user already registered") || raw.contains("email address is already") {
-            return "An account with this email already exists."
-        }
-        if raw.contains("password should be at least") || raw.contains("password is too short") {
-            return "Password must be at least 6 characters."
-        }
-        if raw.contains("jwt expired") || raw.contains("session expired") {
-            return "Your session has expired. Please sign in again."
-        }
-        if raw.contains("rate limit") || raw.contains("too many requests") {
-            return "Too many attempts. Please wait a moment and try again."
-        }
-        if raw.contains("signup is disabled") {
-            return "New registrations are currently disabled."
-        }
-        if raw.contains("invalid email") {
-            return "Please enter a valid email address."
+        if let message = supabaseUserFacingMessage(normalizedDescription: raw) {
+            return message
         }
 
         // Unknown error — show a generic message so no raw SDK string ever

@@ -9,7 +9,7 @@ inside the service) so calls to notes_repo.* are intercepted by AsyncMock,
 matching the async repo interface.
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import UUID
 
@@ -24,7 +24,7 @@ from app.services import notes_service
 
 USER_ID = UUID("00000000-0000-0000-0000-000000000001")
 NOTE_ID = UUID("00000000-0000-0000-0000-000000000002")
-_NOW = datetime(2026, 1, 1, tzinfo=timezone.utc)
+_NOW = datetime(2026, 1, 1, tzinfo=UTC)
 
 _SAMPLE_NOTE = NoteOut(
     id=NOTE_ID,
@@ -97,12 +97,11 @@ class TestGetUserNote:
 
 
 class TestCreateUserNote:
-    async def test_delegates_to_repo_and_returns_created_note(
-        self, mock_client: MagicMock
-    ) -> None:
+    async def test_delegates_to_repo_and_returns_created_note(self, mock_client: MagicMock) -> None:
         payload = NoteIn(title="New note", body=None)
 
         with patch("app.services.notes_service.notes_repo") as mock_repo:
+            mock_repo.count_notes = AsyncMock(return_value=0)
             mock_repo.create_note = AsyncMock(return_value=_SAMPLE_NOTE)
 
             result = await notes_service.create_user_note(mock_client, USER_ID, payload)
@@ -114,6 +113,7 @@ class TestCreateUserNote:
         payload = NoteIn(title="Title", body="Body text")
 
         with patch("app.services.notes_service.notes_repo") as mock_repo:
+            mock_repo.count_notes = AsyncMock(return_value=0)
             mock_repo.create_note = AsyncMock(return_value=_SAMPLE_NOTE)
             await notes_service.create_user_note(mock_client, USER_ID, payload)
 
@@ -128,9 +128,7 @@ class TestCreateUserNote:
 
 
 class TestUpdateUserNote:
-    async def test_delegates_to_repo_and_returns_updated_note(
-        self, mock_client: MagicMock
-    ) -> None:
+    async def test_delegates_to_repo_and_returns_updated_note(self, mock_client: MagicMock) -> None:
         payload = NoteUpdate(title="Updated")
 
         with patch("app.services.notes_service.notes_repo") as mock_repo:

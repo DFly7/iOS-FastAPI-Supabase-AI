@@ -23,8 +23,9 @@ struct StarterAppApp: App {
             wrappedValue: AuthService(supabaseURL: url, supabaseAnonKey: APIConfig.supabaseAnonKey)
         )
         let supabaseHost = url.host ?? url.absoluteString
+        let posthogOn = APIConfig.isPostHogConfigured
         AppLog.general.info(
-            "App init — Supabase host=\(supabaseHost, privacy: .public), PostHog=\(APIConfig.isPostHogConfigured, privacy: .public)"
+            "App init — Supabase host=\(supabaseHost, privacy: .public), PostHog=\(posthogOn, privacy: .public)"
         )
     }
 
@@ -47,8 +48,10 @@ struct StarterAppApp: App {
             RootView()
                 .environmentObject(authService)
                 .onOpenURL { url in
+                    let scheme = url.scheme ?? "nil"
+                    let host = url.host ?? "nil"
                     AppLog.general.info(
-                        "Open URL scheme=\(url.scheme ?? "nil", privacy: .public) host=\(url.host ?? "nil", privacy: .public)"
+                        "Open URL scheme=\(scheme, privacy: .public) host=\(host, privacy: .public)"
                     )
                     Task { @MainActor in
                         await authService.handleIncomingURL(url)

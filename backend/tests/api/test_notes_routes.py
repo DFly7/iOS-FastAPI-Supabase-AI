@@ -4,15 +4,15 @@ import uuid
 from unittest.mock import AsyncMock, MagicMock
 
 from fastapi.testclient import TestClient
-
-from app.core.auth import get_authenticated_client, verify_jwt
-from app.main import app
 from tests.api.jwt_route_helpers import (
     FAKE_TOKEN,
     MOCK_AUTH_DATA,
     notes_auth_override,
     override_verify_jwt,
 )
+
+from app.core.auth import get_authenticated_client, verify_jwt
+from app.main import app
 
 _NOTE_ID = str(uuid.uuid4())
 _NOTE_ROW = {
@@ -28,6 +28,11 @@ _NOTE_ROW = {
 def _mock_execute(data) -> AsyncMock:
     """Return an AsyncMock for .execute() that resolves to a result with .data."""
     return AsyncMock(return_value=MagicMock(data=data))
+
+
+def _mock_count_execute(count: int = 0) -> AsyncMock:
+    """Return an AsyncMock for count_notes: empty data plus Supabase count metadata."""
+    return AsyncMock(return_value=MagicMock(data=[], count=count))
 
 
 def test_list_notes_requires_auth() -> None:
@@ -47,9 +52,9 @@ def test_create_note_requires_auth() -> None:
 def test_list_notes_returns_empty_list() -> None:
     """GET /me/notes returns [] when no notes exist."""
     mock_supabase = MagicMock()
-    mock_supabase.table.return_value.select.return_value.eq.return_value.order.return_value.execute = _mock_execute(
-        []
-    )
+    (
+        mock_supabase.table.return_value.select.return_value.eq.return_value.order.return_value
+    ).execute = _mock_execute([])
 
     app.dependency_overrides[get_authenticated_client] = notes_auth_override(mock_supabase)
     try:
@@ -68,9 +73,9 @@ def test_list_notes_returns_empty_list() -> None:
 def test_list_notes_returns_existing_notes() -> None:
     """GET /me/notes returns a list of the user's notes."""
     mock_supabase = MagicMock()
-    mock_supabase.table.return_value.select.return_value.eq.return_value.order.return_value.execute = _mock_execute(
-        [_NOTE_ROW]
-    )
+    (
+        mock_supabase.table.return_value.select.return_value.eq.return_value.order.return_value
+    ).execute = _mock_execute([_NOTE_ROW])
 
     app.dependency_overrides[get_authenticated_client] = notes_auth_override(mock_supabase)
     try:
@@ -92,6 +97,8 @@ def test_list_notes_returns_existing_notes() -> None:
 def test_create_note_returns_201() -> None:
     """POST /me/notes with valid body → 201 with created row."""
     mock_supabase = MagicMock()
+    sel = mock_supabase.table.return_value.select.return_value
+    sel.eq.return_value.limit.return_value.execute = _mock_count_execute(0)
     mock_supabase.table.return_value.insert.return_value.execute = _mock_execute([_NOTE_ROW])
 
     app.dependency_overrides[get_authenticated_client] = notes_auth_override(mock_supabase)
@@ -129,9 +136,9 @@ def test_create_note_missing_title_returns_422() -> None:
 def test_get_single_note_returns_404_when_missing() -> None:
     """GET /me/notes/{id} for a non-existent note → 404."""
     mock_supabase = MagicMock()
-    mock_supabase.table.return_value.select.return_value.eq.return_value.eq.return_value.limit.return_value.execute = _mock_execute(
-        []
-    )
+    (
+        mock_supabase.table.return_value.select.return_value.eq.return_value.eq.return_value.limit.return_value
+    ).execute = _mock_execute([])
 
     app.dependency_overrides[get_authenticated_client] = notes_auth_override(mock_supabase)
     try:
@@ -150,9 +157,8 @@ def test_patch_note_returns_updated_note() -> None:
     """PATCH /me/notes/{id} with valid payload → 200 with updated note."""
     updated_row = {**_NOTE_ROW, "title": "Updated title"}
     mock_supabase = MagicMock()
-    mock_supabase.table.return_value.update.return_value.eq.return_value.eq.return_value.execute = _mock_execute(
-        [updated_row]
-    )
+    upd = mock_supabase.table.return_value.update.return_value
+    upd.eq.return_value.eq.return_value.execute = _mock_execute([updated_row])
 
     app.dependency_overrides[get_authenticated_client] = notes_auth_override(mock_supabase)
     try:
@@ -179,9 +185,8 @@ def test_delete_note_requires_auth() -> None:
 def test_delete_note_returns_204() -> None:
     """DELETE /me/notes/{id} for an existing note → 204 No Content."""
     mock_supabase = MagicMock()
-    mock_supabase.table.return_value.delete.return_value.eq.return_value.eq.return_value.execute = _mock_execute(
-        [_NOTE_ROW]
-    )
+    q = mock_supabase.table.return_value.delete.return_value
+    q.eq.return_value.eq.return_value.execute = _mock_execute([_NOTE_ROW])
 
     app.dependency_overrides[get_authenticated_client] = notes_auth_override(mock_supabase)
     try:
@@ -199,9 +204,8 @@ def test_delete_note_returns_204() -> None:
 def test_delete_note_returns_404_when_missing() -> None:
     """DELETE /me/notes/{id} for a non-existent note → 404."""
     mock_supabase = MagicMock()
-    mock_supabase.table.return_value.delete.return_value.eq.return_value.eq.return_value.execute = _mock_execute(
-        []
-    )
+    q = mock_supabase.table.return_value.delete.return_value
+    q.eq.return_value.eq.return_value.execute = _mock_execute([])
 
     app.dependency_overrides[get_authenticated_client] = notes_auth_override(mock_supabase)
     try:

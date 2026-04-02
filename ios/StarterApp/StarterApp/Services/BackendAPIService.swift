@@ -1,21 +1,33 @@
 import Foundation
 
+/// Response body for `GET /api/v1/secure-test` (kept at file scope to satisfy SwiftLint nesting limits).
+private struct SecureTestResponseBody: Decodable, Equatable {
+    let message: String
+    let userId: String?
+
+    enum CodingKeys: String, CodingKey {
+        case message
+        case userId = "user_id"
+    }
+}
+
 /// Calls the FastAPI backend using the Supabase JWT (`Authorization: Bearer …`).
 enum BackendAPIService {
+    typealias SecureTestResponse = SecureTestResponseBody
 
     // MARK: - Shared codecs
 
     /// FastAPI serialises `datetime` fields as ISO 8601 strings; the decoder must match.
     private static let decoder: JSONDecoder = {
-        let d = JSONDecoder()
-        d.dateDecodingStrategy = .iso8601
-        return d
+        let jsonDecoder = JSONDecoder()
+        jsonDecoder.dateDecodingStrategy = .iso8601
+        return jsonDecoder
     }()
 
     private static let encoder: JSONEncoder = {
-        let e = JSONEncoder()
-        e.dateEncodingStrategy = .iso8601
-        return e
+        let jsonEncoder = JSONEncoder()
+        jsonEncoder.dateEncodingStrategy = .iso8601
+        return jsonEncoder
     }()
 
     // MARK: - Errors
@@ -75,18 +87,12 @@ enum BackendAPIService {
 
     // MARK: - Auth / demo
 
-    struct SecureTestResponse: Decodable, Equatable {
-        let message: String
-        let userId: String?
-
-        enum CodingKeys: String, CodingKey {
-            case message
-            case userId = "user_id"
-        }
-    }
-
     static func fetchSecureTest(accessToken: String?) async throws -> SecureTestResponse {
-        let data = try await request(method: "GET", path: "api/v1/secure-test", accessToken: accessToken)
+        let data = try await request(
+            method: "GET",
+            path: "api/v1/secure-test",
+            accessToken: accessToken
+        )
         return try decoder.decode(SecureTestResponse.self, from: data)
     }
 
@@ -105,7 +111,12 @@ enum BackendAPIService {
     ) async throws -> ProfileOut {
         let payload = ProfileUpdate(displayName: displayName, avatarUrl: avatarUrl)
         let body = try encoder.encode(payload)
-        let data = try await request(method: "PATCH", path: "api/v1/me/profile", bodyData: body, accessToken: accessToken)
+        let data = try await request(
+            method: "PATCH",
+            path: "api/v1/me/profile",
+            bodyData: body,
+            accessToken: accessToken
+        )
         return try decoder.decode(ProfileOut.self, from: data)
     }
 
@@ -120,7 +131,12 @@ enum BackendAPIService {
     static func createNote(title: String, body: String? = nil, accessToken: String?) async throws -> NoteOut {
         let payload = NoteIn(title: title, body: body)
         let bodyData = try encoder.encode(payload)
-        let data = try await request(method: "POST", path: "api/v1/me/notes", bodyData: bodyData, accessToken: accessToken)
+        let data = try await request(
+            method: "POST",
+            path: "api/v1/me/notes",
+            bodyData: bodyData,
+            accessToken: accessToken
+        )
         return try decoder.decode(NoteOut.self, from: data)
     }
 

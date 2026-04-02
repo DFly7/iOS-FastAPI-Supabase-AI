@@ -18,7 +18,9 @@ enum APIConfig {
               !urlString.isEmpty,
               let url = URL(string: urlString) else {
             fatalError(
-                "BackendURL is invalid or missing. Set BACKEND_URL in Config-Debug.xcconfig / Config-Release.xcconfig and assign those files under the app target’s Debug / Release configurations."
+                "BackendURL is invalid or missing. Set BACKEND_URL in Config-Debug.xcconfig / " +
+                "Config-Release.xcconfig and assign those files under the app target’s Debug / " +
+                "Release configurations."
             )
         }
         return url
@@ -67,8 +69,8 @@ enum APIConfig {
             return false
         }
         if let raw = infoDictionary["PostHogEnabled"] as? String {
-            let t = raw.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
-            if ["0", "NO", "FALSE", "OFF"].contains(t) {
+            let normalized = raw.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+            if ["0", "NO", "FALSE", "OFF"].contains(normalized) {
                 return false
             }
         }

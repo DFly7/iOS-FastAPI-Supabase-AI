@@ -9,15 +9,15 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi.testclient import TestClient
-
-from app.core.auth import AuthenticatedClient, get_authenticated_client, verify_jwt
-from app.main import app
 from tests.api.jwt_route_helpers import (
     FAKE_TOKEN,
     FAKE_USER_ID,
     MOCK_AUTH_DATA,
     override_verify_jwt,
 )
+
+from app.core.auth import AuthenticatedClient, get_authenticated_client, verify_jwt
+from app.main import app
 
 # ---------------------------------------------------------------------------
 # Tests — /api/v1/secure-test

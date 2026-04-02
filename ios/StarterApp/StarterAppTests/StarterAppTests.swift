@@ -44,9 +44,9 @@ struct ServiceErrorTests {
 struct GeneratedModelsEncodingTests {
 
     private let encoder: JSONEncoder = {
-        let e = JSONEncoder()
-        e.dateEncodingStrategy = .iso8601
-        return e
+        let jsonEncoder = JSONEncoder()
+        jsonEncoder.dateEncodingStrategy = .iso8601
+        return jsonEncoder
     }()
 
     @Test("NoteIn encodes title and body with the expected keys")
@@ -93,9 +93,9 @@ struct GeneratedModelsEncodingTests {
 struct GeneratedModelsDecodingTests {
 
     private let decoder: JSONDecoder = {
-        let d = JSONDecoder()
-        d.dateDecodingStrategy = .iso8601
-        return d
+        let jsonDecoder = JSONDecoder()
+        jsonDecoder.dateDecodingStrategy = .iso8601
+        return jsonDecoder
     }()
 
     @Test("NoteOut decodes snake_case JSON to camelCase Swift properties")
@@ -109,9 +109,9 @@ struct GeneratedModelsDecodingTests {
             "created_at": "2026-01-01T00:00:00Z",
             "updated_at": "2026-01-02T00:00:00Z"
         }
-        """.data(using: .utf8)!
+        """
 
-        let note = try decoder.decode(NoteOut.self, from: json)
+        let note = try decoder.decode(NoteOut.self, from: Data(json.utf8))
 
         #expect(note.title == "My note")
         #expect(note.body == nil)
@@ -132,9 +132,9 @@ struct GeneratedModelsDecodingTests {
             "created_at": "2026-01-01T00:00:00Z",
             "updated_at": "2026-01-01T00:00:00Z"
         }
-        """.data(using: .utf8)!
+        """
 
-        let note = try decoder.decode(NoteOut.self, from: json)
+        let note = try decoder.decode(NoteOut.self, from: Data(json.utf8))
         #expect(note.body == "Some content")
     }
 
@@ -147,9 +147,9 @@ struct GeneratedModelsDecodingTests {
             "avatar_url": null,
             "created_at": "2026-01-01T00:00:00Z"
         }
-        """.data(using: .utf8)!
+        """
 
-        let profile = try decoder.decode(ProfileOut.self, from: json)
+        let profile = try decoder.decode(ProfileOut.self, from: Data(json.utf8))
         #expect(profile.displayName == "Alice")
         #expect(profile.avatarUrl == nil)
         #expect(profile.id.uuidString.lowercased() == "00000000-0000-0000-0000-000000000001")
@@ -164,9 +164,9 @@ struct GeneratedModelsDecodingTests {
             "avatar_url": null,
             "created_at": "2026-01-01T00:00:00Z"
         }
-        """.data(using: .utf8)!
+        """
 
-        let profile = try decoder.decode(ProfileOut.self, from: json)
+        let profile = try decoder.decode(ProfileOut.self, from: Data(json.utf8))
         #expect(profile.displayName == nil)
     }
 }
@@ -223,7 +223,7 @@ struct ContentViewModelTests {
             NoteOut(id: id1, userId: UUID(), title: "First",
                     body: nil, createdAt: date, updatedAt: date),
             NoteOut(id: id2, userId: UUID(), title: "Second",
-                    body: nil, createdAt: date, updatedAt: date),
+                    body: nil, createdAt: date, updatedAt: date)
         ]
 
         vm.notes.removeAll { $0.id == id1 }

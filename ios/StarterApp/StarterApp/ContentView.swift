@@ -162,7 +162,8 @@ struct ContentView: View {
     private var notesSection: some View {
         Section {
             Text(
-                "Full CRUD: POST (create, 201), GET (list), DELETE (204) — all through the repo → service → router chain."
+                "Full CRUD: POST (create, 201), GET (list), DELETE (204) — "
+                + "all through the repo → service → router chain."
             )
             .font(.footnote)
             .foregroundStyle(.secondary)
