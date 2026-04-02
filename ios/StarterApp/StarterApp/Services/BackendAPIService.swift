@@ -1,7 +1,7 @@
 import Foundation
 
-/// Response body for `GET /api/v1/secure-test` (kept at file scope to satisfy SwiftLint nesting limits).
-private struct SecureTestResponseBody: Decodable, Equatable {
+/// Response body for `GET /api/v1/secure-test` (file scope avoids SwiftLint nesting; must be ≥ internal for `SecureTestResponse` typealias).
+struct SecureTestResponseBody: Decodable, Equatable {
     let message: String
     let userId: String?
 
