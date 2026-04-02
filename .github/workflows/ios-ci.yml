@@ -38,11 +38,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Pin Xcode to a known-good version so runner image updates don't silently
-      # change the compiler. Keep in sync with distribute.yml.
+      # Pin to an Xcode whose *simulator* runtimes actually exist on the runner.
+      # Older 16.x images ship 16.2 (SDK 18.2) but GitHub often drops matching iOS 18.2
+      # devices; 16.4 is the image default and pairs with iOS 18.5 “iPhone 16” sims.
       # Available versions: https://github.com/actions/runner-images/blob/main/images/macos/macos-15-Readme.md
-      - name: Select Xcode 16.2
-        run: sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
+      - name: Select Xcode 16.4
+        run: sudo xcode-select -s /Applications/Xcode_16.4.app/Contents/Developer
 
       # Pinned versions: .mise.toml (tuist, swiftlint). Avoid Homebrew so CI matches local `mise install`.
       - name: Install mise (Tuist + SwiftLint)

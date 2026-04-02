@@ -103,7 +103,7 @@ iPhone (or Simulator)
 ### CI / CD (GitHub Actions)
 - `backend-ci.yml` — lint, test, build Docker image, push to GHCR on `main`
 - `backend-integration.yml` — install Supabase CLI, `supabase start`, run integration tests against it
-- `ios-ci.yml` — `tuist generate`, `xcodebuild test` on macOS-15 (Xcode 16.2 pinned)
+- `ios-ci.yml` — `tuist generate`, `xcodebuild test` on macOS-15 (Xcode 16.4 pinned; matches bundled simulators)
 - `distribute.yml` — signed Release archive → TestFlight, triggered on `v*` tags (see [Path to TestFlight](#path-to-testflight))
 - `supabase-migrations.yml` — push migrations to your hosted Supabase project when `supabase/migrations/**` changes on `main`
 

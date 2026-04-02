@@ -8,10 +8,9 @@ from tests.api.jwt_route_helpers import (
     FAKE_TOKEN,
     MOCK_AUTH_DATA,
     notes_auth_override,
-    override_verify_jwt,
 )
 
-from app.core.auth import get_authenticated_client, verify_jwt
+from app.core.auth import get_authenticated_client
 from app.main import app
 
 _NOTE_ID = str(uuid.uuid4())
@@ -119,7 +118,8 @@ def test_create_note_returns_201() -> None:
 
 def test_create_note_missing_title_returns_422() -> None:
     """POST /me/notes without title → 422 Unprocessable Entity."""
-    app.dependency_overrides[verify_jwt] = override_verify_jwt
+    mock_supabase = MagicMock()
+    app.dependency_overrides[get_authenticated_client] = notes_auth_override(mock_supabase)
     try:
         with TestClient(app) as client:
             response = client.post(
@@ -128,7 +128,7 @@ def test_create_note_missing_title_returns_422() -> None:
                 headers={"Authorization": f"Bearer {FAKE_TOKEN}"},
             )
     finally:
-        app.dependency_overrides.pop(verify_jwt, None)
+        app.dependency_overrides.pop(get_authenticated_client, None)
 
     assert response.status_code == 422
 

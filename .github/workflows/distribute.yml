@@ -37,12 +37,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Pin Xcode to a known-good version. macos-15 runners ship multiple Xcode
-      # versions; leaving this unset means a runner image update can silently
-      # change the compiler and break the build.
+      # Pin Xcode — keep in sync with ios-ci.yml (simulator runtimes must exist on the image).
       # Check available versions: https://github.com/actions/runner-images/blob/main/images/macos/macos-15-Readme.md
-      - name: Select Xcode 16.2
-        run: sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
+      - name: Select Xcode 16.4
+        run: sudo xcode-select -s /Applications/Xcode_16.4.app/Contents/Developer
 
       # Pinned tool versions match local `mise install` (tuist, swiftlint).
       - name: Install mise (Tuist + SwiftLint)
