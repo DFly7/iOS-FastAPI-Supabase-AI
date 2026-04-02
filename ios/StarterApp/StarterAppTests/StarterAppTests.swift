@@ -58,14 +58,14 @@ struct GeneratedModelsEncodingTests {
         #expect(json?["body"] as? String == "World")
     }
 
-    @Test("NoteIn with nil body encodes body key as null")
+    @Test("NoteIn with nil body omits body key (JSONEncoder synthesised encoding)")
     func noteInNilBodyEncoding() throws {
         let note = NoteIn(title: "No body", body: nil)
         let data = try encoder.encode(note)
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
         #expect(json?["title"] as? String == "No body")
-        // NSNull indicates an explicit JSON null (body key is present but null)
-        #expect(json?["body"] is NSNull)
+        // Swift omits nil optionals; FastAPI/Pydantic still treats missing `body` as None.
+        #expect(json?["body"] == nil)
     }
 
     @Test("NoteUpdate encodes only non-nil fields")
