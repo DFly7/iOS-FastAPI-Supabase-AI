@@ -224,6 +224,8 @@ All versions are pinned in `.mise.toml` and kept in sync with CI:
 ## Path to TestFlight
 
 > `make setup-dist` handles all of the one-time setup. You do not need to manually click "New App" in the portal or manage certificates by hand.
+>
+> Full step-by-step guide for getting every key and secret: **[distribution-setup.md](distribution-setup.md)**
 
 ### Prerequisites (do these once in the browser)
 
