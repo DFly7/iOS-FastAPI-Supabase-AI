@@ -7,39 +7,75 @@ import Foundation
 import Testing
 @testable import StarterApp
 
-// MARK: - BackendAPIService.ServiceError
+// MARK: - AppError
 
-@Suite("BackendAPIService.ServiceError")
-struct ServiceErrorTests {
+@Suite("AppError")
+struct AppErrorTests {
 
-    @Test("noAccessToken has a descriptive message")
-    func noAccessTokenDescription() {
-        let error = BackendAPIService.ServiceError.noAccessToken
-        #expect(error.errorDescription == "Not signed in (no access token).")
+    @Test("notSignedIn produces a sign-in prompt")
+    func notSignedInDescription() {
+        let error = AppError.notSignedIn
+        #expect(error.errorDescription?.contains("not signed in") == true)
     }
 
-    @Test("unexpectedStatus includes status code and body in message")
-    func unexpectedStatusWithBody() {
-        let error = BackendAPIService.ServiceError.unexpectedStatus(404, "not found")
+    @Test("requestFailed 422 shows the message directly (no HTTP prefix)")
+    func requestFailed422ShowsMessageOnly() {
+        let error = AppError.requestFailed(statusCode: 422, message: "Maximum of 5 notes allowed.")
+        #expect(error.errorDescription == "Maximum of 5 notes allowed.")
+    }
+
+    @Test("requestFailed non-422 prefixes with HTTP status code")
+    func requestFailedNon422IncludesCode() {
+        let error = AppError.requestFailed(statusCode: 404, message: "not found")
         #expect(error.errorDescription?.contains("404") == true)
         #expect(error.errorDescription?.contains("not found") == true)
     }
 
-    @Test("unexpectedStatus with nil body omits body text")
-    func unexpectedStatusWithoutBody() {
-        let error = BackendAPIService.ServiceError.unexpectedStatus(500, nil)
-        #expect(error.errorDescription == "Server returned status 500.")
+    @Test("requestFailed with empty message falls back to generic HTTP description")
+    func requestFailedEmptyMessage() {
+        let error = AppError.requestFailed(statusCode: 500, message: "")
+        #expect(error.errorDescription == "Request failed (HTTP 500).")
     }
 
-    @Test("unexpectedStatus with empty body omits body text")
-    func unexpectedStatusWithEmptyBody() {
-        let error = BackendAPIService.ServiceError.unexpectedStatus(503, "")
-        #expect(error.errorDescription == "Server returned status 503.")
+    @Test("networkFailure produces a connectivity message")
+    func networkFailureDescription() {
+        let error = AppError.networkFailure(underlying: URLError(.notConnectedToInternet))
+        #expect(error.errorDescription?.contains("Network connection failed") == true)
+    }
+
+    @Test("decodingFailure produces an unexpected-format message")
+    func decodingFailureDescription() {
+        let error = AppError.decodingFailure(underlying: URLError(.cannotDecodeContentData))
+        #expect(error.errorDescription?.contains("unexpected response format") == true)
+    }
+
+    @Test("message(from:fallback:) extracts detail string from FastAPI HTTPException body")
+    func messageExtractsDetailString() throws {
+        let body = #"{"detail": "Maximum of 5 notes allowed."}"#
+        let data = Data(body.utf8)
+        let message = AppError.message(from: data, fallback: "fallback")
+        #expect(message == "Maximum of 5 notes allowed.")
+    }
+
+    @Test("message(from:fallback:) joins msgs from Pydantic validation array")
+    func messageExtractsPydanticArray() throws {
+        let body = #"{"detail": [{"loc": ["body", "title"], "msg": "field required", "type": "missing"}]}"#
+        let data = Data(body.utf8)
+        let message = AppError.message(from: data, fallback: "fallback")
+        #expect(message == "field required")
+    }
+
+    @Test("message(from:fallback:) uses fallback when body is not JSON")
+    func messageUsesFallbackForPlainText() {
+        let data = Data("Internal Server Error".utf8)
+        let message = AppError.message(from: data, fallback: "fallback text")
+        #expect(message == "fallback text")
     }
 }
 
 // MARK: - GeneratedModels encoding
 
+@MainActor
 @Suite("GeneratedModels — Encoding")
 struct GeneratedModelsEncodingTests {
 
@@ -89,6 +125,10 @@ struct GeneratedModelsEncodingTests {
 
 // MARK: - GeneratedModels decoding
 
+// The main app target sets SWIFT_DEFAULT_ACTOR_ISOLATION = YES, which gives NoteOut and
+// ProfileOut an implicit @MainActor-isolated Decodable conformance. Annotating this suite
+// @MainActor makes the decoding calls valid in Swift 6 strict concurrency mode.
+@MainActor
 @Suite("GeneratedModels — Decoding")
 struct GeneratedModelsDecodingTests {
 

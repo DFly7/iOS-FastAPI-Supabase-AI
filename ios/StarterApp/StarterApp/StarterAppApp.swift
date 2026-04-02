@@ -11,7 +11,7 @@ import SwiftUI
 
 @main
 struct StarterAppApp: App {
-    @StateObject private var authService: AuthService
+    @State private var authService: AuthService
 
     init() {
         Self.configurePostHogIfNeeded()
@@ -19,8 +19,8 @@ struct StarterAppApp: App {
         guard let url = URL(string: APIConfig.supabaseURL) else {
             fatalError("Invalid Supabase URL in config")
         }
-        _authService = StateObject(
-            wrappedValue: AuthService(supabaseURL: url, supabaseAnonKey: APIConfig.supabaseAnonKey)
+        _authService = State(
+            initialValue: AuthService(supabaseURL: url, supabaseAnonKey: APIConfig.supabaseAnonKey)
         )
         let supabaseHost = url.host ?? url.absoluteString
         let posthogOn = APIConfig.isPostHogConfigured
@@ -46,7 +46,7 @@ struct StarterAppApp: App {
     var body: some Scene {
         WindowGroup {
             RootView()
-                .environmentObject(authService)
+                .environment(authService)
                 .onOpenURL { url in
                     let scheme = url.scheme ?? "nil"
                     let host = url.host ?? "nil"

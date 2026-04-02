@@ -3,7 +3,7 @@ import CryptoKit
 import SwiftUI
 
 struct AuthView: View {
-    @EnvironmentObject private var authService: AuthService
+    @Environment(AuthService.self) private var authService
     @Environment(\.dismiss) private var dismiss
 
     @State private var authMode: AuthMode = .signIn
@@ -167,5 +167,5 @@ struct AuthView: View {
 
 #Preview {
     AuthView()
-        .environmentObject(AuthService.previewSignedOut)
+        .environment(AuthService.previewSignedOut)
 }

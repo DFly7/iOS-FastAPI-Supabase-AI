@@ -6,6 +6,12 @@ import Observation
 /// Separating state and async calls from the view keeps SwiftUI previews fast,
 /// makes unit testing straightforward, and keeps the view a pure rendering layer.
 ///
+/// ### Error handling
+/// Each operation exposes a typed `AppError?` rather than a raw `String?`.
+/// This lets callers branch on the *kind* of failure (e.g. show a sign-in prompt
+/// on `.notSignedIn`, a retry button on `.networkFailure`) without parsing strings.
+/// The view calls `error.localizedDescription` when it only needs a display string.
+///
 /// Usage in the view:
 /// ```swift
 /// @State private var viewModel = ContentViewModel()
@@ -16,26 +22,31 @@ final class ContentViewModel {
     // MARK: - Secure test
 
     var secureTestResult: BackendAPIService.SecureTestResponse?
-    var secureTestError: String?
+    var secureTestError: AppError?
     var isCallingSecureTest = false
 
     // MARK: - Profile
 
     var profile: ProfileOut?
-    var profileError: String?
+    var profileError: AppError?
     var isLoadingProfile = false
 
     // MARK: - Update profile
 
     var isUpdatingProfile = false
-    var updateProfileError: String?
+    var updateProfileError: AppError?
 
     // MARK: - Notes
 
     var notes: [NoteOut] = []
-    var notesError: String?
+    var notesError: AppError?
     var isLoadingNotes = false
     var isCreatingNote = false
+
+    // MARK: - Update note
+
+    var isUpdatingNote = false
+    var updateNoteError: AppError?
 
     // MARK: - Actions
 
@@ -46,8 +57,10 @@ final class ContentViewModel {
         defer { isCallingSecureTest = false }
         do {
             secureTestResult = try await BackendAPIService.fetchSecureTest(accessToken: accessToken)
+        } catch let appError as AppError {
+            secureTestError = appError
         } catch {
-            secureTestError = error.localizedDescription
+            secureTestError = .networkFailure(underlying: error)
         }
     }
 
@@ -57,8 +70,10 @@ final class ContentViewModel {
         defer { isLoadingProfile = false }
         do {
             profile = try await BackendAPIService.fetchMyProfile(accessToken: accessToken)
+        } catch let appError as AppError {
+            profileError = appError
         } catch {
-            profileError = error.localizedDescription
+            profileError = .networkFailure(underlying: error)
         }
     }
 
@@ -71,8 +86,10 @@ final class ContentViewModel {
                 displayName: displayName,
                 accessToken: accessToken
             )
+        } catch let appError as AppError {
+            updateProfileError = appError
         } catch {
-            updateProfileError = error.localizedDescription
+            updateProfileError = .networkFailure(underlying: error)
         }
     }
 
@@ -82,19 +99,40 @@ final class ContentViewModel {
         defer { isLoadingNotes = false }
         do {
             notes = try await BackendAPIService.fetchNotes(accessToken: accessToken)
+        } catch let appError as AppError {
+            notesError = appError
         } catch {
-            notesError = error.localizedDescription
+            notesError = .networkFailure(underlying: error)
         }
     }
 
     func createNote(title: String, body: String? = nil, accessToken: String?) async {
+        notesError = nil
         isCreatingNote = true
         defer { isCreatingNote = false }
         do {
             let note = try await BackendAPIService.createNote(title: title, body: body, accessToken: accessToken)
             notes.insert(note, at: 0)
+        } catch let appError as AppError {
+            notesError = appError
         } catch {
-            notesError = error.localizedDescription
+            notesError = .networkFailure(underlying: error)
+        }
+    }
+
+    func updateNote(id: UUID, title: String, accessToken: String?) async {
+        updateNoteError = nil
+        isUpdatingNote = true
+        defer { isUpdatingNote = false }
+        do {
+            let updated = try await BackendAPIService.updateNote(id: id, title: title, accessToken: accessToken)
+            if let index = notes.firstIndex(where: { $0.id == id }) {
+                notes[index] = updated
+            }
+        } catch let appError as AppError {
+            updateNoteError = appError
+        } catch {
+            updateNoteError = .networkFailure(underlying: error)
         }
     }
 
@@ -102,8 +140,10 @@ final class ContentViewModel {
         do {
             try await BackendAPIService.deleteNote(id: id, accessToken: accessToken)
             notes.removeAll { $0.id == id }
+        } catch let appError as AppError {
+            notesError = appError
         } catch {
-            notesError = error.localizedDescription
+            notesError = .networkFailure(underlying: error)
         }
     }
 }

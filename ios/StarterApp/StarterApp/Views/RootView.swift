@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct RootView: View {
-    @EnvironmentObject private var authService: AuthService
+    @Environment(AuthService.self) private var authService
     @State private var showingAuth = false
 
     var body: some View {
@@ -16,7 +16,7 @@ struct RootView: View {
         }
         .sheet(isPresented: $showingAuth) {
             AuthView()
-                .environmentObject(authService)
+                .environment(authService)
         }
         .onChange(of: authService.isAuthenticated) { _, isAuthed in
             if isAuthed { showingAuth = false }
@@ -38,10 +38,10 @@ struct RootView: View {
 
 #Preview("Signed out") {
     RootView()
-        .environmentObject(AuthService.previewSignedOut)
+        .environment(AuthService.previewSignedOut)
 }
 
 #Preview("Signed in") {
     RootView()
-        .environmentObject(AuthService.previewAuthenticated)
+        .environment(AuthService.previewAuthenticated)
 }

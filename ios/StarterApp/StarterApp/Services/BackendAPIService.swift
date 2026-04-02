@@ -30,25 +30,6 @@ enum BackendAPIService {
         return jsonEncoder
     }()
 
-    // MARK: - Errors
-
-    enum ServiceError: LocalizedError {
-        case noAccessToken
-        case unexpectedStatus(Int, String?)
-
-        var errorDescription: String? {
-            switch self {
-            case .noAccessToken:
-                return "Not signed in (no access token)."
-            case let .unexpectedStatus(code, body):
-                if let body, !body.isEmpty {
-                    return "Server returned \(code): \(body)"
-                }
-                return "Server returned status \(code)."
-            }
-        }
-    }
-
     // MARK: - Core request helper
 
     /// Executes an authorized HTTP request and returns the raw response `Data`.
@@ -57,7 +38,8 @@ enum BackendAPIService {
     ///   - method: HTTP method string ("GET", "POST", "PATCH", "DELETE", …).
     ///   - path: Path relative to `APIConfig.backendURL` (e.g. `"api/v1/me/profile"`).
     ///   - bodyData: Already-encoded JSON body, or `nil` for requests without a body.
-    ///   - accessToken: Supabase JWT; throws `ServiceError.noAccessToken` when absent.
+    ///   - accessToken: Supabase JWT; throws `AppError.notSignedIn` when absent.
+    /// - Throws: `AppError.notSignedIn`, `AppError.networkFailure`, or `AppError.requestFailed`.
     private static func request(
         method: String,
         path: String,
@@ -65,7 +47,7 @@ enum BackendAPIService {
         accessToken: String?
     ) async throws -> Data {
         guard let accessToken, !accessToken.isEmpty else {
-            throw ServiceError.noAccessToken
+            throw AppError.notSignedIn
         }
 
         var urlRequest = URLRequest(url: APIConfig.backendURL.appending(path: path))
@@ -76,13 +58,29 @@ enum BackendAPIService {
             urlRequest.httpBody = bodyData
         }
 
-        let (data, response) = try await URLSession.shared.data(for: urlRequest)
+        let (data, response): (Data, URLResponse)
+        do {
+            (data, response) = try await URLSession.shared.data(for: urlRequest)
+        } catch {
+            throw AppError.networkFailure(underlying: error)
+        }
+
         let status = (response as? HTTPURLResponse)?.statusCode ?? -1
         guard (200 ... 299).contains(status) else {
-            let body = String(data: data, encoding: .utf8)
-            throw ServiceError.unexpectedStatus(status, body)
+            let fallback = String(data: data, encoding: .utf8) ?? ""
+            let message = AppError.message(from: data, fallback: fallback)
+            throw AppError.requestFailed(statusCode: status, message: message)
         }
         return data
+    }
+
+    /// Decodes `data` into `T`, wrapping any `DecodingError` as `AppError.decodingFailure`.
+    private static func decode<T: Decodable>(_ type: T.Type, from data: Data) throws -> T {
+        do {
+            return try decoder.decode(type, from: data)
+        } catch {
+            throw AppError.decodingFailure(underlying: error)
+        }
     }
 
     // MARK: - Auth / demo
@@ -93,14 +91,14 @@ enum BackendAPIService {
             path: "api/v1/secure-test",
             accessToken: accessToken
         )
-        return try decoder.decode(SecureTestResponse.self, from: data)
+        return try decode(SecureTestResponse.self, from: data)
     }
 
     // MARK: - Profile
 
     static func fetchMyProfile(accessToken: String?) async throws -> ProfileOut {
         let data = try await request(method: "GET", path: "api/v1/me/profile", accessToken: accessToken)
-        return try decoder.decode(ProfileOut.self, from: data)
+        return try decode(ProfileOut.self, from: data)
     }
 
     /// PATCH /api/v1/me/profile — only non-nil fields are sent so the server only updates those columns.
@@ -117,14 +115,14 @@ enum BackendAPIService {
             bodyData: body,
             accessToken: accessToken
         )
-        return try decoder.decode(ProfileOut.self, from: data)
+        return try decode(ProfileOut.self, from: data)
     }
 
     // MARK: - Notes
 
     static func fetchNotes(accessToken: String?) async throws -> [NoteOut] {
         let data = try await request(method: "GET", path: "api/v1/me/notes", accessToken: accessToken)
-        return try decoder.decode([NoteOut].self, from: data)
+        return try decode([NoteOut].self, from: data)
     }
 
     /// POST /api/v1/me/notes — returns the created note with its server-assigned id and timestamps.
@@ -137,7 +135,7 @@ enum BackendAPIService {
             bodyData: bodyData,
             accessToken: accessToken
         )
-        return try decoder.decode(NoteOut.self, from: data)
+        return try decode(NoteOut.self, from: data)
     }
 
     /// PATCH /api/v1/me/notes/{id} — only supplied fields are changed.
@@ -155,7 +153,7 @@ enum BackendAPIService {
             bodyData: bodyData,
             accessToken: accessToken
         )
-        return try decoder.decode(NoteOut.self, from: data)
+        return try decode(NoteOut.self, from: data)
     }
 
     /// DELETE /api/v1/me/notes/{id} — server returns 204 No Content on success.

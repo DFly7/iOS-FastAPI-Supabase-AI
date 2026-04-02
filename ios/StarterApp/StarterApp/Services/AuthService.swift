@@ -1,7 +1,7 @@
 import AuthenticationServices
 import Auth
-import Combine
 import Foundation
+import Observation
 import OSLog
 import PostHog
 import SwiftUI
@@ -9,16 +9,17 @@ import Supabase
 
 /// Supabase auth with Keychain session storage; subscribes to ``AuthClient/authStateChanges`` so
 /// token refresh and remote sign-out stay in sync with ``isAuthenticated`` / user fields.
+@Observable
 @MainActor
-final class AuthService: ObservableObject {
-    @Published private(set) var isAuthenticated = false
-    @Published private(set) var userId: UUID?
-    @Published private(set) var userEmail: String?
-    @Published var isLoading = false
-    @Published var errorMessage: String?
-    @Published var infoMessage: String?
+final class AuthService {
+    private(set) var isAuthenticated = false
+    private(set) var userId: UUID?
+    private(set) var userEmail: String?
+    var isLoading = false
+    var errorMessage: String?
+    var infoMessage: String?
     /// True until the first ``AuthChangeEvent/initialSession`` is processed from ``authStateChanges``.
-    @Published private(set) var isCheckingInitialSession = true
+    private(set) var isCheckingInitialSession = true
 
     let client: SupabaseClient
 

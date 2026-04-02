@@ -6,7 +6,7 @@
 import SwiftUI
 
 struct ContentView: View {
-    @EnvironmentObject private var authService: AuthService
+    @Environment(AuthService.self) private var authService
 
     /// View model owns all async state. Declared with @State so SwiftUI tracks
     /// @Observable property changes and re-renders only what actually changed.
@@ -17,6 +17,8 @@ struct ContentView: View {
     @State private var editingDisplayName = ""
     @State private var isShowingNoteComposer = false
     @State private var newNoteTitle = ""
+    @State private var editingNoteId: UUID?
+    @State private var editingNoteTitle = ""
 
     var body: some View {
         NavigationStack {
@@ -77,7 +79,7 @@ struct ContentView: View {
                 }
 
                 if let error = viewModel.secureTestError {
-                    ErrorBanner(message: error) {
+                    ErrorBanner(message: error.localizedDescription) {
                         Task { await viewModel.callSecureTest(accessToken: authService.accessToken) }
                     }
                 }
@@ -122,7 +124,7 @@ struct ContentView: View {
                                 HStack { ProgressView().scaleEffect(0.75); Text("Saving…").font(.caption) }
                             }
                             if let err = viewModel.updateProfileError {
-                                ErrorBanner(message: err, onRetry: nil)
+                                ErrorBanner(message: err.localizedDescription, onRetry: nil)
                             }
                         }
                         .padding(.top, 4)
@@ -148,7 +150,7 @@ struct ContentView: View {
                 }
 
                 if let error = viewModel.profileError {
-                    ErrorBanner(message: error) {
+                    ErrorBanner(message: error.localizedDescription) {
                         Task { await viewModel.fetchProfile(accessToken: authService.accessToken) }
                     }
                 }
@@ -162,7 +164,7 @@ struct ContentView: View {
     private var notesSection: some View {
         Section {
             Text(
-                "Full CRUD: POST (create, 201), GET (list), DELETE (204) — "
+                "Full CRUD: POST (create, 201), GET (list), PATCH (update), DELETE (204) — "
                 + "all through the repo → service → router chain."
             )
             .font(.footnote)
@@ -173,17 +175,55 @@ struct ContentView: View {
             }
 
             ForEach(viewModel.notes) { note in
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(note.title).font(.subheadline)
-                    Text(note.createdAt, format: .relative(presentation: .named))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .onDelete { offsets in
-                for index in offsets {
-                    let id = viewModel.notes[index].id
-                    Task { await viewModel.deleteNote(id: id, accessToken: authService.accessToken) }
+                if editingNoteId == note.id {
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            TextField("Note title", text: $editingNoteTitle)
+                                .textFieldStyle(.roundedBorder)
+                            Button("Save") {
+                                let id = note.id
+                                let title = editingNoteTitle
+                                editingNoteId = nil
+                                Task {
+                                    await viewModel.updateNote(
+                                        id: id,
+                                        title: title,
+                                        accessToken: authService.accessToken
+                                    )
+                                }
+                            }
+                            .disabled(
+                                editingNoteTitle.trimmingCharacters(in: .whitespaces).isEmpty
+                                    || viewModel.isUpdatingNote
+                            )
+                            Button("Cancel") { editingNoteId = nil }
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .padding(.vertical, 4)
+                } else {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(note.title).font(.subheadline)
+                        Text(note.createdAt, format: .relative(presentation: .named))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .swipeActions(edge: .leading) {
+                        Button {
+                            editingNoteTitle = note.title
+                            editingNoteId = note.id
+                        } label: {
+                            Label("Edit", systemImage: "pencil")
+                        }
+                        .tint(.blue)
+                    }
+                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                        Button(role: .destructive) {
+                            Task { await viewModel.deleteNote(id: note.id, accessToken: authService.accessToken) }
+                        } label: {
+                            Label("Delete", systemImage: "trash")
+                        }
+                    }
                 }
             }
 
@@ -215,15 +255,19 @@ struct ContentView: View {
             }
 
             if let error = viewModel.notesError {
-                ErrorBanner(message: error) {
+                ErrorBanner(message: error.localizedDescription) {
                     Task { await viewModel.fetchNotes(accessToken: authService.accessToken) }
                 }
+            }
+
+            if let error = viewModel.updateNoteError {
+                ErrorBanner(message: error.localizedDescription, onRetry: nil)
             }
         } header: {
             Text("Notes")
         } footer: {
             if !viewModel.notes.isEmpty {
-                Text("Swipe left on a note to delete.")
+                Text("Swipe right to edit · swipe left to delete.")
             }
         }
     }
@@ -314,5 +358,5 @@ private struct ErrorBanner: View {
 
 #Preview {
     ContentView()
-        .environmentObject(AuthService.previewAuthenticated)
+        .environment(AuthService.previewAuthenticated)
 }

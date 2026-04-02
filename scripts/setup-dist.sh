@@ -120,6 +120,8 @@ echo "  Runtime secrets (these go into Config-Release.xcconfig and GitHub Secret
 echo ""
 ask "Production Supabase URL (e.g. https://yourproject.supabase.co):"; read -r SUPABASE_URL
 ask "Production Supabase Anon Key:"; read -r SUPABASE_ANON_KEY
+ask "Production backend URL — public HTTPS root for FastAPI (e.g. https://api.yourcompany.com):"; read -r PRODUCTION_BACKEND_URL
+[[ -n "$PRODUCTION_BACKEND_URL" ]] || die "Production backend URL is required for release builds."
 ask "PostHog API Key (leave blank to disable):"; read -r POSTHOG_API_KEY
 
 # 1d. Credentials smoke test — read-only, no certificate writes yet
@@ -158,7 +160,7 @@ cat > "$IOS_DIR/Config-Release.xcconfig" << EOF
 DEVELOPMENT_TEAM = ${TEAM_ID}
 PRODUCT_BUNDLE_IDENTIFIER = ${BUNDLE_ID}
 
-BACKEND_URL = https:/$()/api.yourdomain.com
+BACKEND_URL = ${PRODUCTION_BACKEND_URL}
 SUPABASE_URL = ${SUPABASE_URL}
 SUPABASE_ANON_KEY = ${SUPABASE_ANON_KEY}
 
@@ -223,7 +225,7 @@ P8_CONTENT=$(cat "$P8_PATH")
 
 echo ""
 echo "${BOLD}${GREEN}${LINE}${RESET}"
-echo "${BOLD}${GREEN}  Setup complete! Add these 9 secrets to GitHub:${RESET}"
+echo "${BOLD}${GREEN}  Setup complete! Add these GitHub Actions secrets:${RESET}"
 echo "${BOLD}${GREEN}  github.com → your repo → Settings → Secrets → Actions${RESET}"
 echo "${BOLD}${GREEN}${LINE}${RESET}"
 echo ""
@@ -234,6 +236,7 @@ cat << SECRETS
   APPLE_ID                        = ${APPLE_ID_INPUT}
   SUPABASE_URL                    = ${SUPABASE_URL}
   SUPABASE_ANON_KEY               = ${SUPABASE_ANON_KEY}
+  PRODUCTION_BACKEND_URL          = ${PRODUCTION_BACKEND_URL}
   POSTHOG_API_KEY                 = ${POSTHOG_API_KEY:-<leave empty if unused>}
   MATCH_GIT_URL                   = ${MATCH_GIT_URL}
   MATCH_PASSWORD                  = <the password you entered above>

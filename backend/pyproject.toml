@@ -62,3 +62,9 @@ asyncio_mode = "auto"
 markers = [
     "integration: requires a live local Supabase stack (supabase start); skipped in unit CI",
 ]
+filterwarnings = [
+    # Starlette 1.x deprecated HTTP_422_UNPROCESSABLE_ENTITY in its public API
+    # but its own internal exception handler still references the old name.
+    # Nothing to fix in our code; suppress until Starlette patches itself.
+    "ignore:'HTTP_422_UNPROCESSABLE_ENTITY' is deprecated:DeprecationWarning",
+]

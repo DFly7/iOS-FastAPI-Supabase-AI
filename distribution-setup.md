@@ -12,9 +12,10 @@ Everything you need to do **outside the IDE** before running `make setup-dist` a
 | 2 | App Store Connect | API Key ID, Issuer ID, `.p8` file |
 | 3 | GitHub | Private certs repo URL, Personal Access Token |
 | 4 | Supabase | Production project URL + Anon Key |
-| 5 | PostHog *(optional)* | API Key |
+| 5 | Backend hosting | Public HTTPS base URL of your deployed FastAPI (`PRODUCTION_BACKEND_URL`) |
+| 6 | PostHog *(optional)* | API Key |
 
-At the end you will have all 13 GitHub Secrets and be ready to run `make setup-dist`.
+At the end you will have all GitHub Actions secrets listed in [Step 6](#step-6--add-github-secrets) and be ready to run `make setup-dist`.
 
 ---
 
@@ -163,6 +164,21 @@ On the same Settings → API page, under **Project API keys**, copy the **anon p
 SUPABASE_ANON_KEY = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
 
+### 4c. Production FastAPI base URL (`BACKEND_URL` / `PRODUCTION_BACKEND_URL`)
+
+TestFlight and release builds read the backend URL from `Config-Release.xcconfig` as `BACKEND_URL`. That value must be the **public HTTPS origin** of your deployed FastAPI — the same host your App Store users can reach (for example Load Balancer, Railway, Fly.io, or API Gateway URL).
+
+Use the API root only (no path unless your app is configured for it), for example:
+
+- `https://api.yourcompany.com`
+
+> **CI:** The **Distribute to TestFlight** workflow (`.github/workflows/distribute.yml`) does **not** ship a placeholder. It requires the GitHub Actions secret `PRODUCTION_BACKEND_URL` and writes it into the generated `Config-Release.xcconfig` as `BACKEND_URL`.
+
+**Save this value (secret name must match exactly for CI):**
+```
+PRODUCTION_BACKEND_URL = https://api.yourcompany.com
+```
+
 ---
 
 ## Step 5 — PostHog *(optional)*
@@ -194,6 +210,7 @@ Add each of the following secrets. The name must match exactly (case-sensitive).
 | `APPLE_ID` | Your Apple ID email | `you@example.com` |
 | `SUPABASE_URL` | Step 4a | `https://xxxx.supabase.co` |
 | `SUPABASE_ANON_KEY` | Step 4b | `eyJhbGci...` |
+| `PRODUCTION_BACKEND_URL` | Step 4c | `https://api.yourcompany.com` |
 | `POSTHOG_API_KEY` | Step 5 *(leave blank to disable)* | `phc_xxxx` |
 | `MATCH_GIT_URL` | Step 3a | `https://github.com/yourorg/yourapp-certs` |
 | `MATCH_PASSWORD` | Step 3d | your chosen password |
@@ -221,7 +238,7 @@ The wizard will:
 4. Write `Config-Release.xcconfig` and update `fastlane/Appfile` + `fastlane/Matchfile`
 5. Create the App Store Connect app record via `fastlane produce`
 6. Seed your certs repo via `fastlane match appstore` — **this must complete successfully before you push a tag**
-7. Print all 13 secrets with their actual values so you can copy-paste them into GitHub
+7. Print every repository secret (including `PRODUCTION_BACKEND_URL`) so you can copy-paste them into GitHub
 
 ---
 
@@ -240,6 +257,7 @@ GitHub Actions → **Distribute to TestFlight** workflow runs automatically. The
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
+| `PRODUCTION_BACKEND_URL Actions secret is empty or missing` | Secret not set or typo in name | Add `PRODUCTION_BACKEND_URL` under **Settings → Secrets** (see Step 4c); re-run the workflow |
 | `tuist generate` fails in CI | `Config-Debug.xcconfig` or `Config-Release.xcconfig` missing | Check the "Write xcconfig" steps ran before `tuist generate` in the workflow log |
 | `match` fails in CI with "repo is empty" | `make setup-dist` was not run locally first | Run `make setup-dist` locally to seed the certs repo, then re-push the tag |
 | `upload_to_testflight` fails with "app not found" | App Store Connect record doesn't exist | Run `make create-app` locally |

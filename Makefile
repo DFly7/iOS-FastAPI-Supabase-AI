@@ -1,7 +1,7 @@
 # Run from the repo root: make <target>
 # Pass extra flags directly:  make dev ARGS="--regen --sim-logs"
 
-.PHONY: dev dev-logs stop sync-models check-models ios-gen ios-test ios-test-ui help
+.PHONY: dev dev-logs stop sync-models check-models ios-gen ios-build ios-test ios-test-ui lint backend-test validate check-deps help
 
 # Auto-detect latest available iPhone simulator; override with UDID: make ios-test SIM_ID=<udid>
 SIM_ID ?= $(shell xcrun simctl list devices available | grep -i iphone | tail -1 | grep -oEi '[0-9A-F-]{36}')
@@ -23,6 +23,14 @@ stop: ## Stop all running services (Docker, Supabase, tmux log session)
 
 ios-gen: ## Re-generate the Xcode project (after adding/removing Swift files)
 	cd ios/StarterApp && tuist generate
+
+ios-build: ## Build the iOS app for Simulator without running tests (faster CI gate)
+	@[ -n "$(SIM_ID)" ] || (echo "No iPhone simulator found — install one via Xcode ▸ Settings ▸ Platforms"; exit 1)
+	set -o pipefail && cd ios/StarterApp && xcodebuild build \
+		-workspace StarterApp.xcworkspace \
+		-scheme StarterApp \
+		-destination 'platform=iOS Simulator,id=$(SIM_ID)' \
+		2>&1 | bundle exec xcpretty --color
 
 ios-test: ## Run unit tests on Simulator  (override: SIM_ID=<udid>)
 	@[ -n "$(SIM_ID)" ] || (echo "No iPhone simulator found — install one via Xcode ▸ Settings ▸ Platforms"; exit 1)
@@ -63,6 +71,45 @@ sync-models: ## Generate Swift Codable structs from Pydantic schemas
 
 check-models: ## Dry-run: exit 1 if GeneratedModels.swift is out of sync (use in CI)
 	cd backend && uv run python ../scripts/sync_models.py --check
+
+# ── Lint / backend tests (parity with GitHub Actions) ───────────────────────
+
+backend-test: ## Backend pytest + coverage (same env/flags as Backend CI test job)
+	cd backend && uv sync --frozen && \
+		ENVIRONMENT=ci LOG_JSON=false RATE_LIMIT_ENABLED=false \
+		uv run pytest tests/ -v --tb=short -m "not integration" \
+			--cov=app \
+			--cov-report=term-missing:skip-covered && \
+		uv run coverage report --skip-covered --show-missing
+
+lint: ## Same linters as CI: backend (ruff + mypy via uv) + iOS SwiftLint
+	cd backend && uv sync --frozen && uv run ruff check . && uv run ruff format --check . && uv run mypy app
+	cd ios/StarterApp && \
+	  if command -v mise >/dev/null 2>&1; then \
+	    mise exec -- swiftlint lint --strict --config .swiftlint.yml; \
+	  else \
+	    swiftlint lint --strict --config .swiftlint.yml; \
+	  fi
+
+# ── Validate (local CI-gate simulation) ──────────────────────────────────────
+
+validate: ## Run all checks in sequence: lint → type-check → model-sync → unit tests → iOS build
+	@echo "\n── 1/5  lint & type-check ──────────────────────────────────────"
+	@$(MAKE) lint
+	@echo "\n── 2/5  model-sync check ───────────────────────────────────────"
+	@$(MAKE) check-models
+	@echo "\n── 3/5  backend unit tests ─────────────────────────────────────"
+	@$(MAKE) backend-test
+	@echo "\n── 4/5  iOS unit tests ─────────────────────────────────────────"
+	@$(MAKE) ios-test
+	@echo "\n── 5/5  iOS build check ────────────────────────────────────────"
+	@$(MAKE) ios-build
+	@echo "\n✓  All checks passed — safe to push."
+
+# ── Dependency check ─────────────────────────────────────────────────────────
+
+check-deps: ## Check all prerequisite tools are installed and running
+	@bash scripts/check-deps.sh
 
 # ── Help ─────────────────────────────────────────────────────────────────────
 

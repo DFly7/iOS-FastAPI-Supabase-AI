@@ -1,36 +1,38 @@
-<div align="center">
+
 
 # iOS · FastAPI · Supabase Starter
 
 **Production-ready template for shipping authenticated iOS apps with a FastAPI backend and Supabase — without the weeks of boilerplate.**
 
-[![Backend CI](https://github.com/DFly7/iOS-FastAPI-Supabase-AI/actions/workflows/backend-ci.yml/badge.svg)](https://github.com/DFly7/iOS-FastAPI-Supabase-AI/actions/workflows/backend-ci.yml)
-[![Integration Tests](https://github.com/DFly7/iOS-FastAPI-Supabase-AI/actions/workflows/backend-integration.yml/badge.svg)](https://github.com/DFly7/iOS-FastAPI-Supabase-AI/actions/workflows/backend-integration.yml)
-[![iOS CI](https://github.com/DFly7/iOS-FastAPI-Supabase-AI/actions/workflows/ios-ci.yml/badge.svg)](https://github.com/DFly7/iOS-FastAPI-Supabase-AI/actions/workflows/ios-ci.yml)
-[![Migrations](https://github.com/DFly7/iOS-FastAPI-Supabase-AI/actions/workflows/supabase-migrations.yml/badge.svg)](https://github.com/DFly7/iOS-FastAPI-Supabase-AI/actions/workflows/supabase-migrations.yml)
+[Backend CI](https://github.com/DFly7/iOS-FastAPI-Supabase-AI/actions/workflows/backend-ci.yml)
+[Integration Tests](https://github.com/DFly7/iOS-FastAPI-Supabase-AI/actions/workflows/backend-integration.yml)
+[iOS CI](https://github.com/DFly7/iOS-FastAPI-Supabase-AI/actions/workflows/ios-ci.yml)
+[Migrations](https://github.com/DFly7/iOS-FastAPI-Supabase-AI/actions/workflows/supabase-migrations.yml)
 
-![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white)
-![Swift](https://img.shields.io/badge/Swift-5.10-F05138?logo=swift&logoColor=white)
-![Supabase](https://img.shields.io/badge/Supabase-2.84-3ECF8E?logo=supabase&logoColor=white)
-![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
-![License](https://img.shields.io/badge/license-MIT-blue)
+Python
+FastAPI
+Swift
+Supabase
+Docker
+License
 
-</div>
+
 
 ---
 
 ## What this gives you
 
-Spinning up an authenticated iOS app with a custom backend and a real database typically takes days of glue work. This template collapses it to **`make dev`** from the repo root.
+Spinning up an authenticated iOS app with a custom backend and a real database typically takes days of glue work. This template collapses it to `**make dev`** from the repo root.
 
-| Layer | Technology | What's wired up |
-|-------|-----------|-----------------|
-| **iOS** | SwiftUI + supabase-swift | Auth (sign up / sign in / sign out), JWT forwarded to backend, `BackendAPIService`, Tuist project generation |
-| **Backend** | FastAPI + uv + Docker | JWT verification via Supabase JWKS, per-user profile endpoint, rate limiting, structured JSON logging, Sentry, Prometheus metrics, Resend email |
-| **Database** | Supabase (Postgres 17) | `profiles` table, Row-Level Security policies, `handle_new_user` trigger, seed hooks |
-| **Local infra** | Supabase CLI + Docker Compose | Full Supabase stack locally (API · Studio · Auth · Storage · Realtime), backend on port 8000, HTTPS tunnels for physical device testing |
-| **CI/CD** | GitHub Actions | Backend unit tests, Docker image push to GHCR, integration tests against live local Supabase, iOS build + test on macOS, automated production migration push |
+
+| Layer           | Technology                    | What's wired up                                                                                                                                              |
+| --------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **iOS**         | SwiftUI + supabase-swift      | Auth (sign up / sign in / sign out), JWT forwarded to backend, `BackendAPIService`, Tuist project generation                                                 |
+| **Backend**     | FastAPI + uv + Docker         | JWT verification via Supabase JWKS, per-user profile endpoint, rate limiting, structured JSON logging, Sentry, Prometheus metrics, Resend email              |
+| **Database**    | Supabase (Postgres 17)        | `profiles` table, Row-Level Security policies, `handle_new_user` trigger, seed hooks                                                                         |
+| **Local infra** | Supabase CLI + Docker Compose | Full Supabase stack locally (API · Studio · Auth · Storage · Realtime), backend on port 8000, HTTPS tunnels for physical device testing                      |
+| **CI/CD**       | GitHub Actions                | Backend unit tests, Docker image push to GHCR, integration tests against live local Supabase, iOS build + test on macOS, automated production migration push |
+
 
 ---
 
@@ -67,13 +69,15 @@ iPhone (or Simulator)
 ## What's already built
 
 ### SwiftUI iOS App
+
 - **Auth flow** — Sign up, sign in, sign out with supabase-swift; session persisted across launches
 - **Authenticated API calls** — `BackendAPIService` attaches the Supabase JWT to every request
 - **Config via xcconfig** — `SUPABASE_URL`, `BACKEND_URL`, and `SUPABASE_ANON_KEY` injected at build time; no secrets in source
-- **Tuist** — `Project.swift` defines the target, dependencies (Supabase, PostHog), URL scheme, and entitlements; no committed `.xcodeproj` drift
+- **Tuist** — `Project.swift` defines the target, dependencies (Supabase, PostHog), URL scheme, and entitlements; generated `.xcodeproj` / `.xcworkspace` are gitignored — run `make ios-gen` and open `StarterApp.xcworkspace` in Xcode
 - **Deep link auth redirect** — `com.example.starter://` URL scheme wired to Supabase auth
 
 ### FastAPI Backend
+
 - **JWKS JWT verification** — validates Supabase-issued tokens without a shared secret; HTTP client reused across requests
 - **Auth middleware** — `AuthContextMiddleware` extracts `user_id` and attaches it to every request's context
 - **Request ID middleware** — every request gets a unique `X-Request-ID` for tracing
@@ -84,28 +88,31 @@ iPhone (or Simulator)
 - **Resend email** — helper service ready to send transactional email
 - **CORS** — correctly handles `allow_credentials` with explicit origins
 - **Environment-aware config** — single `Settings` class via `pydantic-settings`; sensible defaults, all overridable via env vars
-- **`GET /healthz`** — unauthenticated health check
-- **`GET /api/v1/ping`** — open ping
-- **`GET /api/v1/secure-test`** — requires valid JWT
-- **`GET /api/v1/me/profile`** — returns the authenticated user's profile from Postgres
+- `**GET /healthz`** — unauthenticated health check
+- `**GET /api/v1/ping**` — open ping
+- `**GET /api/v1/secure-test**` — requires valid JWT
+- `**GET /api/v1/me/profile**` — returns the authenticated user's profile from Postgres
 
 ### Supabase
-- **`profiles` table** — auto-created for every new user via `handle_new_user` trigger on `auth.users`
+
+- `**profiles` table** — auto-created for every new user via `handle_new_user` trigger on `auth.users`
 - **Row-Level Security** — users can only read and update their own profile
 - **Seed file** — `supabase/seed.sql` runs on every `supabase start` for local dev
 - **Local Studio** — full Supabase dashboard at `http://127.0.0.1:54323`
 
 ### Testing
+
 - **Unit tests** — pytest with async support; services and auth helpers tested in isolation
 - **Integration tests** — spin up a real local Supabase instance via `supabase start`; test the full auth → backend → DB round trip
 - **iOS tests** — Swift Testing unit tests + XCUITest UI tests scaffolded and running in CI
 
 ### CI / CD (GitHub Actions)
+
 - `backend-ci.yml` — lint, test, build Docker image, push to GHCR on `main`
 - `backend-integration.yml` — install Supabase CLI, `supabase start`, run integration tests against it
 - `ios-ci.yml` — `tuist generate`, `xcodebuild test` on macOS-15 (Xcode 16.4 pinned; matches bundled simulators)
 - `distribute.yml` — signed Release archive → TestFlight, triggered on `v*` tags (see [Path to TestFlight](#path-to-testflight))
-- `supabase-migrations.yml` — push migrations to your hosted Supabase project when `supabase/migrations/**` changes on `main`
+- `supabase-migrations.yml` — push migrations to your hosted Supabase project when `supabase/migrations/`** changes on `main`
 
 ---
 
@@ -142,7 +149,7 @@ cp ios/StarterApp/Config.example.xcconfig ios/StarterApp/Config-Release.xcconfig
 make dev
 ```
 
-This runs **`scripts/dev.sh`**: starts Supabase, brings up FastAPI via Docker Compose, syncs `backend/.env` and iOS `Config-Debug.xcconfig` with local URLs and keys, runs `tuist generate`, then builds and launches the app in the **iOS Simulator** (no tunnel required on the Simulator). **Ctrl+C stops everything cleanly.**
+This runs `**scripts/dev.sh**`: starts Supabase, brings up FastAPI via Docker Compose, syncs `backend/.env` and iOS `Config-Debug.xcconfig` with local URLs and keys, runs `tuist generate`, then builds and launches the app in the **iOS Simulator** (no tunnel required on the Simulator). **Ctrl+C stops everything cleanly.**
 
 ```
 Services:
@@ -152,15 +159,16 @@ Services:
 
 For a physical device you still need HTTPS tunnel URLs in xcconfig; see **[local-setup.md](local-setup.md)**. Extra flags: `make dev ARGS="--regen"` (tuist install + generate), `ARGS="--no-ios"` (services only), `ARGS="--sim-logs"`.
 
-### 4. Open the iOS project (optional)
+### 4. Open the iOS project in Xcode (optional)
 
-If you used **`make dev`** with the default flow, Tuist already ran and the Simulator may already have the app. To work in Xcode manually (or after **`make dev ARGS="--no-ios"`**):
+If you used `**make dev`** with the default flow, Tuist already ran and the Simulator may already have the app. To work in Xcode manually (or after `**make dev ARGS="--no-ios"**`):
 
 ```sh
-cd ios/StarterApp
-tuist install && tuist generate
-open StarterApp.xcodeproj
+make ios-gen
+open ios/StarterApp/StarterApp.xcworkspace
 ```
+
+Tuist writes `StarterApp.xcodeproj` and `StarterApp.xcworkspace` under `ios/StarterApp/`; both are generated and gitignored. **Open the `.xcworkspace`** (same as CI and `make ios-test`). Opening only an old or copied `.xcodeproj` can show stale targets and package resolution. If you change Swift package dependencies, run `cd ios/StarterApp && tuist install` before `make ios-gen` (see **Customising**).
 
 Build and run on the Simulator or a physical device (device builds need valid signing and tunnel URLs — see **local-setup.md**).
 
@@ -202,22 +210,26 @@ Build and run on the Simulator or a physical device (device builds need valid si
 
 All versions are pinned in `.mise.toml` and kept in sync with CI:
 
-| Tool | Version |
-|------|---------|
-| Python | 3.12 |
-| uv | 0.11.2 |
-| Tuist | 4.44.3 |
-| Supabase CLI | 2.84.2 |
+
+| Tool         | Version |
+| ------------ | ------- |
+| Python       | 3.12    |
+| uv           | 0.11.2  |
+| Tuist        | 4.44.3  |
+| Supabase CLI | 2.84.2  |
+
 
 ---
 
 ## Local ports
 
-| Service | Port | URL |
-|---------|------|-----|
-| Supabase API | 54321 | `http://127.0.0.1:54321` |
+
+| Service         | Port  | URL                      |
+| --------------- | ----- | ------------------------ |
+| Supabase API    | 54321 | `http://127.0.0.1:54321` |
 | Supabase Studio | 54323 | `http://127.0.0.1:54323` |
-| FastAPI backend | 8000 | `http://127.0.0.1:8000` |
+| FastAPI backend | 8000  | `http://127.0.0.1:8000`  |
+
 
 ---
 
@@ -239,6 +251,7 @@ make setup-dist
 ```
 
 The wizard will:
+
 - Validate your `Project.swift` is clean, your `.p8` key is readable, and your credentials resolve (smoke test — fails fast before writing anything)
 - Fill in `Config-Release.xcconfig` and `fastlane/Appfile` / `fastlane/Matchfile` with your values
 - Run `fastlane produce` to create the App Store Connect record and register the App ID (idempotent — safe to re-run)
@@ -252,21 +265,24 @@ The wizard will:
 After the wizard finishes, add the printed values to your repo:  
 **GitHub → Settings → Secrets and variables → Actions**
 
-| Secret | Description |
-|---|---|
-| `DEVELOPMENT_TEAM` | 10-character Apple Team ID |
-| `APP_BUNDLE_ID` | e.g. `com.yourcompany.yourapp` |
-| `APP_NAME` | Display name for App Store Connect |
-| `APPLE_ID` | Your Apple ID email |
-| `SUPABASE_URL` | Production Supabase project URL |
-| `SUPABASE_ANON_KEY` | Production Supabase anon key |
-| `POSTHOG_API_KEY` | PostHog key (leave empty to disable) |
-| `MATCH_GIT_URL` | URL of your private certs repo |
-| `MATCH_PASSWORD` | Encryption password set during `match init` |
-| `GIT_BASIC_AUTH` | `base64(github_username:PAT)` — PAT needs `repo` scope |
-| `APP_STORE_CONNECT_API_KEY_ID` | 10-character key ID from App Store Connect |
-| `APP_STORE_CONNECT_API_ISSUER_ID` | UUID issuer ID from App Store Connect |
-| `APP_STORE_CONNECT_API_KEY_CONTENT` | Full contents of your `.p8` key file |
+
+| Secret                              | Description                                            |
+| ----------------------------------- | ------------------------------------------------------ |
+| `DEVELOPMENT_TEAM`                  | 10-character Apple Team ID                             |
+| `APP_BUNDLE_ID`                     | e.g. `com.yourcompany.yourapp`                         |
+| `APP_NAME`                          | Display name for App Store Connect                     |
+| `APPLE_ID`                          | Your Apple ID email                                    |
+| `SUPABASE_URL`                      | Production Supabase project URL                        |
+| `SUPABASE_ANON_KEY`                 | Production Supabase anon key                           |
+| `PRODUCTION_BACKEND_URL`            | Public HTTPS base URL of deployed FastAPI (release)  |
+| `POSTHOG_API_KEY`                   | PostHog key (leave empty to disable)                   |
+| `MATCH_GIT_URL`                     | URL of your private certs repo                         |
+| `MATCH_PASSWORD`                    | Encryption password set during `match init`            |
+| `GIT_BASIC_AUTH`                    | `base64(github_username:PAT)` — PAT needs `repo` scope |
+| `APP_STORE_CONNECT_API_KEY_ID`      | 10-character key ID from App Store Connect             |
+| `APP_STORE_CONNECT_API_ISSUER_ID`   | UUID issuer ID from App Store Connect                  |
+| `APP_STORE_CONNECT_API_KEY_CONTENT` | Full contents of your `.p8` key file                   |
+
 
 ### Ship a build
 
@@ -278,12 +294,14 @@ This triggers the **Distribute to TestFlight** GitHub Action. The build appears 
 
 ### Useful commands
 
-| Command | What it does |
-|---|---|
-| `make setup-dist` | Full one-time setup wizard |
+
+| Command           | What it does                                    |
+| ----------------- | ----------------------------------------------- |
+| `make setup-dist` | Full one-time setup wizard                      |
 | `make create-app` | Re-create App Store Connect record (idempotent) |
-| `make beta` | Build + upload to TestFlight locally |
-| `make release` | Build + submit to App Store locally |
+| `make beta`       | Build + upload to TestFlight locally            |
+| `make release`    | Build + submit to App Store locally             |
+
 
 ---
 
@@ -292,13 +310,12 @@ This triggers the **Distribute to TestFlight** GitHub Action. The build appears 
 - **Rename the app** — update `PRODUCT_BUNDLE_IDENTIFIER` in xcconfig, `CFBundleURLSchemes` in `Project.swift`, and `additional_redirect_urls` in `supabase/config.toml`
 - **Add a migration** — create a file in `supabase/migrations/` following the timestamp naming convention; it runs automatically on `supabase start` and in CI
 - **Add a backend route** — add a handler in `backend/app/api/v1/`, register it in `router.py`
-- **Add a Swift dependency** — add it to `Tuist/Package.swift`, re-run `tuist install && tuist generate`
+- **Add a Swift dependency** — add it to `Tuist/Package.swift`, run `cd ios/StarterApp && tuist install`, then `make ios-gen` from the repo root
 - **Configure Sentry / Resend** — uncomment the relevant lines in `backend/.env` and fill in your keys
 
 ---
 
-<div align="center">
+
 
 Built to skip the setup. Start building features.
 
-</div>

@@ -8,7 +8,7 @@
 #
 # Required GitHub Secrets (printed by make setup-dist):
 #   DEVELOPMENT_TEAM, APP_BUNDLE_ID, APPLE_ID
-#   SUPABASE_URL, SUPABASE_ANON_KEY
+#   SUPABASE_URL, SUPABASE_ANON_KEY, PRODUCTION_BACKEND_URL
 #   POSTHOG_API_KEY (optional, may be empty)
 #   MATCH_GIT_URL, MATCH_PASSWORD, GIT_BASIC_AUTH
 #   APP_STORE_CONNECT_API_KEY_ID, APP_STORE_CONNECT_API_ISSUER_ID,
@@ -61,10 +61,15 @@ jobs:
         env:
           DEVELOPMENT_TEAM: ${{ secrets.DEVELOPMENT_TEAM }}
           APP_BUNDLE_ID: ${{ secrets.APP_BUNDLE_ID }}
+          PRODUCTION_BACKEND_URL: ${{ secrets.PRODUCTION_BACKEND_URL }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
         run: |
+          if [ -z "${PRODUCTION_BACKEND_URL}" ]; then
+            echo "::error::PRODUCTION_BACKEND_URL Actions secret is empty or missing. Set it to your public FastAPI HTTPS base URL (same as BACKEND_URL for release)."
+            exit 1
+          fi
           # Enable PostHog only when a key was actually provided.
           # Missing secrets arrive as empty strings — not set vs empty is the same here.
           POSTHOG_ENABLED_VAL=$([ -n "${POSTHOG_API_KEY}" ] && echo "TRUE" || echo "FALSE")
@@ -72,7 +77,7 @@ jobs:
           cat > Config-Release.xcconfig << EOF
           DEVELOPMENT_TEAM = ${DEVELOPMENT_TEAM}
           PRODUCT_BUNDLE_IDENTIFIER = ${APP_BUNDLE_ID}
-          BACKEND_URL = https:/$()/api.yourdomain.com
+          BACKEND_URL = ${PRODUCTION_BACKEND_URL}
           SUPABASE_URL = ${SUPABASE_URL}
           SUPABASE_ANON_KEY = ${SUPABASE_ANON_KEY}
           POSTHOG_ENABLED = ${POSTHOG_ENABLED_VAL}
