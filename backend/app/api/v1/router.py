@@ -93,12 +93,7 @@ async def update_my_profile(
             status_code=422,
             detail="Request body must include at least one field to update.",
         )
-    res = await (
-        auth.client.table("profiles")
-        .update(changes)
-        .eq("id", user_id)
-        .execute()
-    )
+    res = await auth.client.table("profiles").update(changes).eq("id", user_id).execute()
     rows = res.data or []
     if not rows:
         raise HTTPException(status_code=404, detail="Profile not found.")

@@ -52,9 +52,7 @@ async def update_note(
     auth: AuthenticatedClient = Depends(get_authenticated_client),
 ) -> NoteOut:
     """Partially update a note — only supplied fields are changed (PATCH semantics)."""
-    note = await notes_service.update_user_note(
-        auth.client, note_id, auth.payload["sub"], payload
-    )
+    note = await notes_service.update_user_note(auth.client, note_id, auth.payload["sub"], payload)
     if not note:
         raise HTTPException(status_code=404, detail="Note not found.")
     return note

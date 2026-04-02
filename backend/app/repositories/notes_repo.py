@@ -76,10 +76,6 @@ async def update_note(
 
 async def delete_note(client: AsyncClient, note_id: UUID, user_id: UUID) -> bool:
     res = await (
-        client.table("notes")
-        .delete()
-        .eq("id", str(note_id))
-        .eq("user_id", str(user_id))
-        .execute()
+        client.table("notes").delete().eq("id", str(note_id)).eq("user_id", str(user_id)).execute()
     )
     return bool(res.data)
