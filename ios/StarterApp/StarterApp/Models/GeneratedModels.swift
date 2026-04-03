@@ -44,12 +44,14 @@ struct ProfileOut: Codable, Equatable {
     let displayName: String?
     let avatarUrl: String?
     let createdAt: Date
+    let isPro: Bool?
 
     enum CodingKeys: String, CodingKey {
         case id
         case displayName = "display_name"
         case avatarUrl = "avatar_url"
         case createdAt = "created_at"
+        case isPro = "is_pro"
     }
 }
 

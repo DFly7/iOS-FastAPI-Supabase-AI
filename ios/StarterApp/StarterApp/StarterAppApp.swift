@@ -7,14 +7,17 @@
 
 import OSLog
 import PostHog
+import RevenueCat
 import SwiftUI
 
 @main
 struct StarterAppApp: App {
     @State private var authService: AuthService
+    @State private var purchaseService = PurchaseService()
 
     init() {
         Self.configurePostHogIfNeeded()
+        Self.configureRevenueCat()
 
         guard let url = URL(string: APIConfig.supabaseURL) else {
             fatalError("Invalid Supabase URL in config")
@@ -27,6 +30,14 @@ struct StarterAppApp: App {
         AppLog.general.info(
             "App init — Supabase host=\(supabaseHost, privacy: .public), PostHog=\(posthogOn, privacy: .public)"
         )
+    }
+
+    private static func configureRevenueCat() {
+        Purchases.configure(withAPIKey: APIConfig.revenueCatAPIKey)
+        #if DEBUG
+        Purchases.logLevel = .debug
+        #endif
+        AppLog.purchases.info("RevenueCat configured")
     }
 
     private static func configurePostHogIfNeeded() {
@@ -47,6 +58,18 @@ struct StarterAppApp: App {
         WindowGroup {
             RootView()
                 .environment(authService)
+                .environment(purchaseService)
+                // Sync RevenueCat identity whenever the Supabase user changes.
+                // Fires on sign-in, sign-out, and the initial session check.
+                // Runs before any purchase UI can be shown so RC never writes
+                // an entitlement to an anonymous device ID.
+                .task(id: authService.userId) {
+                    if let id = authService.userId {
+                        await purchaseService.identify(userId: id.uuidString)
+                    } else {
+                        await purchaseService.reset()
+                    }
+                }
                 .onOpenURL { url in
                     let scheme = url.scheme ?? "nil"
                     let host = url.host ?? "nil"

@@ -35,6 +35,7 @@ let project = Project(
                 "PostHogAPIKey": "$(POSTHOG_API_KEY)",
                 "PostHogHost": "$(POSTHOG_HOST)",
                 "PostHogEnabled": "$(POSTHOG_ENABLED)",
+                "RevenueCatAPIKey": "$(REVENUECAT_API_KEY)",
                 // Supabase auth deep-link redirect scheme.
                 // Uses PRODUCT_BUNDLE_IDENTIFIER so renaming the app bundle
                 // automatically keeps the scheme in sync. APIConfig reads this
@@ -72,6 +73,7 @@ let project = Project(
             dependencies: [
                 .external(name: "Supabase"),
                 .external(name: "PostHog"),
+                .external(name: "RevenueCat"),
             ],
             settings: .settings(
                 base: [
@@ -131,5 +133,20 @@ let project = Project(
                 ]
             )
         ),
+    ],
+    schemes: [
+        .scheme(
+            name: "StarterApp",
+            buildAction: .buildAction(targets: [.target("StarterApp")]),
+            testAction: .targets([.testableTarget(target: .target("StarterAppTests"))]),
+            runAction: .runAction(
+                configuration: .debug,
+                executable: .target("StarterApp"),
+                options: .options(storeKitConfigurationPath: "SupportingFiles/Products.storekit")
+            )
+        ),
+    ],
+    additionalFiles: [
+        .glob(pattern: "SupportingFiles/**"),
     ]
 )

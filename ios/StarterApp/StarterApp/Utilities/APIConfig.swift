@@ -60,6 +60,16 @@ enum APIConfig {
         return scheme
     }()
 
+    static let revenueCatAPIKey: String = {
+        guard let key = infoDictionary["RevenueCatAPIKey"] as? String, !key.isEmpty else {
+            fatalError(
+                "RevenueCatAPIKey is invalid or missing. Set REVENUECAT_API_KEY in " +
+                "Config-Debug.xcconfig / Config-Release.xcconfig and run `tuist generate`."
+            )
+        }
+        return key
+    }()
+
     /// True when `POSTHOG_API_KEY` is non-empty and PostHog is not explicitly turned off.
     ///
     /// Set `POSTHOG_ENABLED` to `TRUE` or `FALSE` in xcconfig. Leave `POSTHOG_API_KEY` empty to disable

@@ -21,8 +21,8 @@ stop: ## Stop all running services (Docker, Supabase, tmux log session)
 
 # ── iOS ──────────────────────────────────────────────────────────────────────
 
-ios-gen: ## Re-generate the Xcode project (after adding/removing Swift files)
-	cd ios/StarterApp && tuist generate
+ios-gen: ## Resolve SPM deps and re-generate the Xcode project
+	cd ios/StarterApp && tuist install && tuist generate
 
 ios-build: ## Build the iOS app for Simulator without running tests (faster CI gate)
 	@[ -n "$(SIM_ID)" ] || (echo "No iPhone simulator found — install one via Xcode ▸ Settings ▸ Platforms"; exit 1)

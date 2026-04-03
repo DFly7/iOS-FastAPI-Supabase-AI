@@ -278,13 +278,13 @@ struct ContentViewModelTests {
         let date = Date()
         let original = ProfileOut(
             id: UUID(), displayName: "Old Name",
-            avatarUrl: nil, createdAt: date
+            avatarUrl: nil, createdAt: date, isPro: false
         )
         vm.profile = original
 
         let updated = ProfileOut(
             id: original.id, displayName: "New Name",
-            avatarUrl: nil, createdAt: date
+            avatarUrl: nil, createdAt: date, isPro: false
         )
         vm.profile = updated
 

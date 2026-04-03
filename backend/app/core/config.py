@@ -46,6 +46,9 @@ class Settings(BaseSettings):
     supabase_url: OptionalHttpUrl = None
     supabase_public_anon_key: OptionalStr = None
 
+    revenuecat_webhook_secret: OptionalStr = None
+    supabase_service_role_key: OptionalStr = None
+
     resend_api_key: OptionalStr = None
     resend_from_email: OptionalStr = Field(
         default=None,

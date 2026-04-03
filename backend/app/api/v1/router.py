@@ -26,6 +26,7 @@ To protect all v1 routes: APIRouter(dependencies=[Depends(verify_jwt)])
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.api.v1.notes import router as notes_router
+from app.api.v1.webhooks import router as webhooks_router
 from app.core.auth import AuthenticatedClient, get_authenticated_client, verify_jwt
 from app.schemas.profile import ProfileOut, ProfileUpdate
 
@@ -33,6 +34,7 @@ api_router = APIRouter()
 
 # Feature routers — add yours here as the app grows.
 api_router.include_router(notes_router)
+api_router.include_router(webhooks_router, prefix="/webhooks", tags=["webhooks"])
 
 
 @api_router.get("/ping")

@@ -74,6 +74,7 @@ jobs:
           # Missing secrets arrive as empty strings — not set vs empty is the same here.
           POSTHOG_ENABLED_VAL=$([ -n "${POSTHOG_API_KEY}" ] && echo "TRUE" || echo "FALSE")
 
+          # POSTHOG_HOST: bash must not expand $() here — write literal https:/$()/… for Xcode xcconfig (see Config.example.xcconfig).
           cat > Config-Release.xcconfig << EOF
           DEVELOPMENT_TEAM = ${DEVELOPMENT_TEAM}
           PRODUCT_BUNDLE_IDENTIFIER = ${APP_BUNDLE_ID}
@@ -82,7 +83,7 @@ jobs:
           SUPABASE_ANON_KEY = ${SUPABASE_ANON_KEY}
           POSTHOG_ENABLED = ${POSTHOG_ENABLED_VAL}
           POSTHOG_API_KEY = ${POSTHOG_API_KEY}
-          POSTHOG_HOST = https:/$()/us.i.posthog.com
+          POSTHOG_HOST = https:/\$()/us.i.posthog.com
           DEBUG_INFORMATION_FORMAT = dwarf-with-dsym
           EOF
 

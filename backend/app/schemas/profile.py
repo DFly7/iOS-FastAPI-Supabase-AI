@@ -11,6 +11,7 @@ class ProfileOut(BaseModel):
     display_name: str | None
     avatar_url: str | None
     created_at: datetime
+    is_pro: bool = False
 
 
 class ProfileUpdate(BaseModel):

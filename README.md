@@ -224,12 +224,60 @@ All versions are pinned in `.mise.toml` and kept in sync with CI:
 ## Local ports
 
 
-| Service         | Port  | URL                      |
-| --------------- | ----- | ------------------------ |
-| Supabase API    | 54321 | `http://127.0.0.1:54321` |
-| Supabase Studio | 54323 | `http://127.0.0.1:54323` |
-| FastAPI backend | 8000  | `http://127.0.0.1:8000`  |
+| Service          | Port  | URL                      |
+| ---------------- | ----- | ------------------------ |
+| Supabase API     | 54321 | `http://127.0.0.1:54321` |
+| Supabase Studio  | 54323 | `http://127.0.0.1:54323` |
+| Inbucket (email) | 54324 | `http://127.0.0.1:54324` |
+| FastAPI backend  | 8000  | `http://127.0.0.1:8000`  |
 
+
+---
+
+## Email (Resend + Supabase Auth)
+
+This template uses **Resend** for all outbound email. There are two separate email paths:
+
+| Path | What sends it | Emails |
+| --- | --- | --- |
+| **Supabase auth** | Supabase's GoTrue service | Confirmation links, magic links, password resets |
+| **App-level transactional** | FastAPI via Resend SDK | Anything you send from your own backend routes |
+
+### Local dev
+
+All Supabase auth emails are captured by **Inbucket** — nothing is sent to a real inbox. View them at:
+
+```
+http://127.0.0.1:54324
+```
+
+No configuration is needed; Inbucket runs automatically as part of `make dev`.
+
+### Production: wire Supabase auth to Resend
+
+Supabase's default email service is rate-limited to ~3 emails/hour. To remove that limit, configure Resend as a custom SMTP relay:
+
+**One-time setup:**
+
+1. Sign up at [resend.com](https://resend.com), add and verify your sending domain, and create an API key with Sending access.
+2. In the [Supabase dashboard](https://supabase.com/dashboard) → your project → **Project Settings → Auth → SMTP Settings**, enable custom SMTP and enter:
+
+| Field | Value |
+| --- | --- |
+| Sender name | Your app name |
+| Sender email | `you@yourdomain.com` |
+| Host | `smtp.resend.com` |
+| Port | `465` |
+| Username | `resend` |
+| Password | Your Resend API key (`re_...`) |
+
+This is a dashboard-only change — nothing to commit.
+
+> The same `RESEND_API_KEY` in `backend/.env` is used both here (as the SMTP password) and by the FastAPI Resend SDK for app-level transactional email.
+
+### Sending email from FastAPI
+
+`backend/app/services/resend_email.py` is already wired up. Set `RESEND_API_KEY` and `RESEND_FROM_EMAIL` in `backend/.env` and call the service from any route handler.
 
 ---
 
@@ -312,6 +360,68 @@ This triggers the **Distribute to TestFlight** GitHub Action. The build appears 
 - **Add a backend route** — add a handler in `backend/app/api/v1/`, register it in `router.py`
 - **Add a Swift dependency** — add it to `Tuist/Package.swift`, run `cd ios/StarterApp && tuist install`, then `make ios-gen` from the repo root
 - **Configure Sentry / Resend** — uncomment the relevant lines in `backend/.env` and fill in your keys
+
+---
+
+## Waitlist page
+
+The `docs/` folder contains a ready-to-ship GitHub Pages waitlist page. Send the URL to potential users before you launch — they drop their email (and optionally their phone number), and the signup lands straight in your Supabase `waitlist` table.
+
+### Quick setup
+
+**1. Configure the page** — edit the `CONFIG` block at the top of [`docs/index.html`](docs/index.html):
+
+```js
+const CONFIG = {
+  APP_NAME:        "Your App",
+  APP_TAGLINE:     "Something great is on its way.",
+  APP_DESCRIPTION: "We're building something you'll love. ...",
+  BRAND_COLOR:     "#6366f1",
+  BRAND_COLOR_DARK:"#4f46e5",
+
+  SUPABASE_URL:      "https://YOUR_PROJECT_REF.supabase.co",
+  SUPABASE_ANON_KEY: "YOUR_ANON_KEY",   // ← see critical warning below
+
+  PHONE_ENABLED:   true,
+};
+```
+
+**2. Run the migration** — the `waitlist` table is created automatically when you run `supabase db push` (or `supabase start` locally):
+
+```
+supabase/migrations/20260403000000_create_waitlist.sql
+```
+
+**3. Enable GitHub Pages** — in your GitHub repo go to **Settings → Pages → Source: Deploy from a branch → Branch: `main` / folder: `docs`**. Your page will be live at `https://<your-username>.github.io/<repo-name>/` within a minute.
+
+---
+
+> [!CAUTION]
+> **CRITICAL — Always use `SUPABASE_ANON_KEY`, never `SUPABASE_SERVICE_ROLE_KEY`.**
+>
+> The anon key is designed to be embedded in public client-side code. It is safe to commit and expose. Row Level Security (RLS) controls exactly what it can do — in this case, INSERT into `waitlist` only.
+>
+> The service role key **bypasses all RLS policies**. If you accidentally put it in `docs/index.html`, anyone who views your page source gains unrestricted read/write/delete access to your entire database.
+>
+> Your anon key is in the Supabase dashboard under **Project Settings → API → Project API keys → `anon` `public`**.
+
+---
+
+### How it's hardened
+
+| Layer | Where | What it does |
+| --- | --- | --- |
+| **RLS policy** | Supabase | Anon role can `INSERT` only — no `SELECT`, `UPDATE`, or `DELETE` |
+| **Rate-limit trigger** | Postgres | Max 5 sign-ups per IP per hour (adjust the constant in the migration) |
+| **Honeypot field** | Browser | A hidden field bots fill in; JS silently drops the request without calling Supabase |
+
+### Viewing signups
+
+Query your waitlist from the Supabase dashboard or with the service role key (server-side only):
+
+```sql
+select email, phone, created_at from waitlist order by created_at desc;
+```
 
 ---
 
