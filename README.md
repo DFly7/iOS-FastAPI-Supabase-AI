@@ -120,6 +120,42 @@ iPhone (or Simulator)
 
 > Full step-by-step instructions, tunnel options (instatunnel / ngrok / Cloudflare), and environment variable reference are in **[local-setup.md](local-setup.md)**.
 
+### 0. Rename the project (first-time template users only)
+
+Before anything else, replace every occurrence of `StarterApp`, `com.example.StarterApp`, and `Starter API` with your own app's names:
+
+```sh
+# Run from the repo root (or anywhere inside the repo — the script finds the root automatically)
+./scripts/rename-project.sh
+```
+
+The script prompts for four values (all others are derived automatically):
+
+| Prompt | Example | What it replaces |
+|---|---|---|
+| App name (PascalCase) | `TaskFlow` | `StarterApp` everywhere |
+| Bundle ID | `com.acme.taskflow` | `com.example.StarterApp` |
+| API name | `TaskFlow API` | `Starter API` |
+| Supabase local project ID | `task-flow` *(auto-derived)* | `ios-fastapi-supabase-starter` |
+
+Preview without changing anything:
+
+```sh
+./scripts/rename-project.sh --dry-run --app-name TaskFlow --bundle-id com.acme.taskflow
+```
+
+What it changes: file contents (all tracked text files via `git ls-files`), directory names (`ios/StarterApp/` → `ios/YourApp/`), and file names (`StarterAppApp.swift`, `StarterApp.entitlements`). It also removes stale Tuist-generated artifacts so the next `tuist generate` starts clean.
+
+**Requirements:** working directory must be clean (`git status` shows nothing) so you can `git reset --hard` if needed.
+
+Once you are happy with the result, remove the one-time script:
+
+```sh
+git rm scripts/rename-project.sh && git commit -m "chore: remove template rename script"
+```
+
+---
+
 ### 1. Install tools
 
 ```sh
