@@ -119,7 +119,22 @@ final class PurchaseService {
     }
 
     /// Convenience for the single "pro" entitlement used throughout this template.
-    var isPro: Bool { isSubscribed(to: "pro") }
+    ///
+    /// In `DEBUG` builds the `_isProOverride` flag takes precedence, acting as a master
+    /// key for testing gated UI before a real RevenueCat sandbox key is configured.
+    var isPro: Bool {
+        #if DEBUG
+        if let override = isProOverride { return override }
+        #endif
+        return isSubscribed(to: "pro")
+    }
+
+#if DEBUG
+    /// Override `isPro` without a real RevenueCat entitlement. Set to `true` to
+    /// simulate a subscribed user, `false` to force-free, or `nil` to fall back to
+    /// the live SDK value. Only compiled in DEBUG builds — never ships to production.
+    var isProOverride: Bool?
+#endif
 }
 
 // MARK: - Errors
@@ -140,11 +155,16 @@ enum PurchaseError: LocalizedError {
 
 extension PurchaseService {
     /// A service instance that reports the user as subscribed — for use in SwiftUI previews.
+    ///
+    /// `isPro` returns `true` via the `_isProOverride` debug flag. Note that
+    /// `customerInfo` remains `nil` because `CustomerInfo` is an opaque RevenueCat type
+    /// that cannot be instantiated outside the SDK. Any UI reading fields such as
+    /// `customerInfo?.entitlements["pro"]?.expirationDate` **must** guard-let those
+    /// values — production always has a real `customerInfo` after a successful login.
     @MainActor
     static var previewSubscribed: PurchaseService {
         let svc = PurchaseService()
-        // customerInfo is nil in previews; isPro falls back to false unless overridden.
-        // In previews that need to show a "Pro" state, stub the view model directly.
+        svc.isProOverride = true
         return svc
     }
 

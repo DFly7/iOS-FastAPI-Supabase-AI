@@ -7,6 +7,7 @@ import SwiftUI
 
 struct ContentView: View {
     @Environment(AuthService.self) private var authService
+    @Environment(PurchaseService.self) private var purchases
 
     /// View model owns all async state. Declared with @State so SwiftUI tracks
     /// @Observable property changes and re-renders only what actually changed.
@@ -19,12 +20,14 @@ struct ContentView: View {
     @State private var newNoteTitle = ""
     @State private var editingNoteId: UUID?
     @State private var editingNoteTitle = ""
+    @State private var showPaywall = false
 
     var body: some View {
         NavigationStack {
             List {
                 secureTestSection
                 profileSection
+                proSection
                 notesSection
             }
             .navigationTitle("Starter")
@@ -42,6 +45,84 @@ struct ContentView: View {
                         Image(systemName: "person.circle")
                     }
                 }
+                ToolbarItem(placement: .topBarTrailing) {
+                    proToolbarItem
+                }
+            }
+            .sheet(isPresented: $showPaywall) {
+                PaywallView()
+            }
+        }
+    }
+
+    // MARK: - Pro toolbar item
+
+    /// Free: an "Upgrade" button that opens the paywall.
+    /// Pro: a Menu with subscription management actions — a clean place to add
+    /// "Manage Subscription" and "Restore Purchases" without cluttering the UI.
+    @ViewBuilder
+    private var proToolbarItem: some View {
+        if purchases.isPro {
+            Menu {
+                Label("Pro Member", systemImage: "checkmark.seal.fill")
+                Divider()
+                Button("Manage Subscription") {
+                    if let url = URL(string: "itms-apps://apps.apple.com/account/subscriptions") {
+                        UIApplication.shared.open(url)
+                    }
+                }
+                Button("Restore Purchases") {
+                    Task { try? await purchases.restorePurchases() }
+                }
+            } label: {
+                Label("Pro", systemImage: "crown.fill")
+                    .foregroundStyle(.yellow)
+            }
+        } else {
+            Button { showPaywall = true } label: {
+                Label("Upgrade", systemImage: "crown")
+            }
+        }
+    }
+
+    // MARK: - Pro section
+
+    /// Demonstrates the canonical feature-gating pattern for this template.
+    ///
+    /// Copy this section when you want to gate your own feature behind a Pro subscription.
+    /// The lock→crown SF Symbol morph fires automatically when `isPro` flips because
+    /// the icon is a single `Image` view with `.contentTransition(.symbolEffect(.replace))`,
+    /// giving SwiftUI a stable identity to animate against.
+    private var proSection: some View {
+        Section {
+            Label {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Pro Analytics")
+                        .font(.body)
+                    Text(
+                        purchases.isPro
+                            ? "Active – all features unlocked"
+                            : "Upgrade to Pro to unlock →"
+                    )
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .animation(.default, value: purchases.isPro)
+                }
+            } icon: {
+                Image(systemName: purchases.isPro ? "crown.fill" : "lock.fill")
+                    .foregroundStyle(purchases.isPro ? .yellow : .secondary)
+                    .contentTransition(.symbolEffect(.replace))
+                    .animation(.default, value: purchases.isPro)
+            }
+            .onTapGesture {
+                if !purchases.isPro { showPaywall = true }
+            }
+        } header: {
+            Text("Pro Features")
+        } footer: {
+            if !purchases.isPro {
+                Text("Tap the row or the crown icon in the toolbar to upgrade.")
+                    .font(.caption)
             }
         }
     }
@@ -356,7 +437,14 @@ private struct ErrorBanner: View {
     }
 }
 
-#Preview {
+#Preview("Free user") {
     ContentView()
         .environment(AuthService.previewAuthenticated)
+        .environment(PurchaseService.previewFree)
+}
+
+#Preview("Pro user") {
+    ContentView()
+        .environment(AuthService.previewAuthenticated)
+        .environment(PurchaseService.previewSubscribed)
 }

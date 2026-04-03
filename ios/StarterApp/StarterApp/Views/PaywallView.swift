@@ -53,9 +53,11 @@ struct PaywallView: View {
                         : "No active subscription found for this Apple ID."
                 )
             }
-            // Auto-dismiss when a purchase completes and Pro becomes active.
-            .onChange(of: purchases.isPro) { _, isPro in
-                if isPro { dismiss() }
+            // Auto-dismiss only when isPro flips to true (false → true).
+            // Naming oldValue/newValue explicitly prevents accidentally dismissing
+            // if a network error later flips the state back to false.
+            .onChange(of: purchases.isPro) { _, newValue in
+                if newValue { dismiss() }
             }
         }
     }
@@ -74,10 +76,30 @@ struct PaywallView: View {
                     systemImage: "exclamationmark.triangle",
                     description: Text("Could not load subscription plans. Please try again later.")
                 )
+                #if DEBUG
+                // Developer escape hatch: toggle Pro without a real RevenueCat key.
+                // Tapping "Simulate Pro" sets isProOverride = true, which triggers
+                // the .onChange(of: isPro) watcher above and auto-dismisses the sheet.
+                // This block is stripped from Release builds — it never ships.
+                simulateProButton
+                #endif
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
+
+    #if DEBUG
+    private var simulateProButton: some View {
+        Button {
+            purchases.isProOverride = purchases.isProOverride == true ? false : true
+        } label: {
+            Text(purchases.isProOverride == true ? "Revoke Simulated Pro" : "Simulate Pro (Debug)")
+                .font(.footnote)
+        }
+        .buttonStyle(.bordered)
+        .padding(.top, 8)
+    }
+    #endif
 
     private var packageList: some View {
         List {
