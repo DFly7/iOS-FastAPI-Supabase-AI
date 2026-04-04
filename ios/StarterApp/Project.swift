@@ -138,7 +138,10 @@ let project = Project(
         .scheme(
             name: "StarterApp",
             buildAction: .buildAction(targets: [.target("StarterApp")]),
-            testAction: .targets([.testableTarget(target: .target("StarterAppTests"))]),
+            testAction: .targets([
+                .testableTarget(target: .target("StarterAppTests")),
+                .testableTarget(target: .target("StarterAppUITests")),
+            ]),
             runAction: .runAction(
                 configuration: .debug,
                 executable: .target("StarterApp"),

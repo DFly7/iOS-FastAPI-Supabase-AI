@@ -25,6 +25,121 @@ BACKEND_HEALTHZ="$BACKEND_LOCAL_URL/healthz"
 # Config file helpers
 # ---------------------------------------------------------------------------
 
+# ── Pretty-print helpers (used by check_config_files / check-config) ────────
+
+# Masks long secrets: first 16 chars + …
+_mask_secret() {
+  local v="$1"
+  [[ ${#v} -gt 20 ]] && echo "${v:0:16}…" || echo "$v"
+}
+
+# Returns 0 (true) if $1 looks like an unfilled placeholder value
+_is_placeholder() {
+  case "$1" in
+    ""|XXXXXXXXXX|your_*|appl_xxx*|*yourproject*|*yourcompany*|*your-anon-key*|*your_anon_key*|*your-key*|*your_key*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+# Reverse xcconfig URL escaping for display: http:/$()/  →  http://
+_display_url() { echo "$1" | sed 's|:/$()/|://|g'; }
+
+# Print one config row with ✓ / ⚠ prefix
+_config_row() {
+  local key="$1" raw_val="$2" is_secret="${3:-false}"
+  local display_val="$raw_val"
+  $is_secret && display_val=$(_mask_secret "$raw_val")
+  # Undo xcconfig URL encoding for display
+  display_val=$(_display_url "$display_val")
+  if _is_placeholder "$raw_val"; then
+    printf "  \033[33m⚠\033[0m  %-40s = %s  \033[33m← placeholder\033[0m\n" "$key" "$display_val"
+  elif [[ -z "$raw_val" ]]; then
+    printf "  \033[2m-\033[0m  %-40s = \033[2m(empty)\033[0m\n" "$key"
+  else
+    printf "  \033[32m✓\033[0m  %-40s = %s\n" "$key" "$display_val"
+  fi
+}
+
+# Print all non-comment, non-empty KEY=VALUE lines from an xcconfig file
+_print_xcconfig() {
+  local file="$1"
+  while IFS= read -r line; do
+    # Skip comment and blank lines
+    [[ "$line" =~ ^[[:space:]]*(//|#|$) ]] && continue
+    # xcconfig format: KEY = VALUE  (note spaces around =)
+    [[ "$line" != *" = "* ]] && continue
+    local key raw_val
+    key="${line%% =*}"
+    raw_val="${line#*= }"
+    [[ -z "$key" ]] && continue
+    case "$key" in
+      *KEY*|*SECRET*|*PASSWORD*|*TOKEN*) _config_row "$key" "$raw_val" true ;;
+      *) _config_row "$key" "$raw_val" false ;;
+    esac
+  done < "$file"
+}
+
+# Print all non-comment, non-empty KEY=VALUE lines from a .env file
+_print_env() {
+  local file="$1"
+  while IFS= read -r line; do
+    [[ "$line" =~ ^[[:space:]]*(#|$) ]] && continue
+    local key raw_val
+    key=$(echo "$line" | cut -d= -f1)
+    raw_val=$(echo "$line" | cut -d= -f2-)
+    [[ -z "$key" ]] && continue
+    case "$key" in
+      *KEY*|*SECRET*|*PASSWORD*|*TOKEN*) _config_row "$key" "$raw_val" true ;;
+      *) _config_row "$key" "$raw_val" false ;;
+    esac
+  done < "$file"
+}
+
+# Validate and display xcconfigs + backend .env.
+# Exits with status 1 if any required file is missing.
+check_config_files() {
+  local exit_code=0
+  local XCCONFIG_RELEASE
+  XCCONFIG_RELEASE="${XCCONFIG/Config-Debug/Config-Release}"
+
+  printf "\n\033[1m── iOS: Config-Debug.xcconfig ──────────────────────────────────\033[0m\n"
+  if [[ -f "$XCCONFIG" ]]; then
+    _print_xcconfig "$XCCONFIG"
+  else
+    printf "  \033[31m✗  MISSING\033[0m\n"
+    printf "     Copy ios/StarterApp/Config.example.xcconfig → Config-Debug.xcconfig\n"
+    exit_code=1
+  fi
+
+  printf "\n\033[1m── iOS: Config-Release.xcconfig ─────────────────────────────────\033[0m\n"
+  if [[ -f "$XCCONFIG_RELEASE" ]]; then
+    _print_xcconfig "$XCCONFIG_RELEASE"
+  else
+    printf "  \033[33m⚠  MISSING\033[0m  (only needed for device / TestFlight builds)\n"
+    printf "     Copy ios/StarterApp/Config.example.xcconfig → Config-Release.xcconfig\n"
+    printf "     and fill in your production DEVELOPMENT_TEAM, bundle ID, URLs, and keys.\n"
+  fi
+
+  printf "\n\033[1m── Backend: .env ────────────────────────────────────────────────\033[0m\n"
+  if [[ -f "$ENV_FILE" ]]; then
+    _print_env "$ENV_FILE"
+  else
+    printf "  \033[31m✗  MISSING\033[0m\n"
+    printf "     Copy backend/.env.example → backend/.env\n"
+    exit_code=1
+  fi
+
+  echo ""
+  if [[ $exit_code -ne 0 ]]; then
+    printf "\033[31mOne or more required config files are missing — see above.\033[0m\n\n"
+  else
+    printf "\033[32mAll required config files present.\033[0m\n\n"
+  fi
+  return $exit_code
+}
+
+# ── Upsert helpers ──────────────────────────────────────────────────────────
+
 # Upsert KEY=VALUE in a .env-style file (adds if missing, updates if wrong)
 upsert_env() {
   local file="$1" key="$2" value="$3"

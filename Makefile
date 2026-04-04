@@ -1,7 +1,7 @@
 # Run from the repo root: make <target>
 # Pass extra flags directly:  make dev ARGS="--regen --sim-logs"
 
-.PHONY: dev dev-logs stop sync-models check-models ios-gen ios-build ios-test ios-test-ui lint backend-test validate check-deps help
+.PHONY: dev dev-logs stop check-config sync-models check-models ios-gen ios-build ios-test ios-test-ui lint backend-test validate check-deps help
 
 # Auto-detect latest available iPhone simulator; override with UDID: make ios-test SIM_ID=<udid>
 SIM_ID ?= $(shell xcrun simctl list devices available | grep -i iphone | tail -1 | grep -oEi '[0-9A-F-]{36}')
@@ -18,6 +18,9 @@ stop: ## Stop all running services (Docker, Supabase, tmux log session)
 	-cd backend && docker compose down
 	-supabase stop --no-backup
 	-tmux kill-session -t dev-stack 2>/dev/null
+
+check-config: ## Show and validate iOS xcconfig + backend .env (no services needed)
+	@bash -c 'REPO_ROOT="$(CURDIR)" && source scripts/_lib.sh && check_config_files'
 
 # ── iOS ──────────────────────────────────────────────────────────────────────
 
