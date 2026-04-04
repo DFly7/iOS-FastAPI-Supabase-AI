@@ -67,4 +67,9 @@ filterwarnings = [
     # but its own internal exception handler still references the old name.
     # Nothing to fix in our code; suppress until Starlette patches itself.
     "ignore:'HTTP_422_UNPROCESSABLE_ENTITY' is deprecated:DeprecationWarning",
+    # supabase-py passes `timeout` and `verify` to AsyncPostgrestClient using the
+    # old positional/keyword API that postgrest-py now flags as deprecated.
+    # This is an internal library issue — no fix required in our code.
+    "ignore:The 'timeout' parameter is deprecated:DeprecationWarning:supabase",
+    "ignore:The 'verify' parameter is deprecated:DeprecationWarning:supabase",
 ]

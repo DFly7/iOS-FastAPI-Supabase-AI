@@ -1,7 +1,7 @@
 # Run from the repo root: make <target>
 # Pass extra flags directly:  make dev ARGS="--regen --sim-logs"
 
-.PHONY: dev dev-logs stop check-config sync-models check-models ios-gen ios-build ios-test ios-test-ui lint backend-test validate check-deps help
+.PHONY: dev dev-logs stop check-config sync-models check-models ios-gen ios-build ios-test ios-test-ui lint backend-test backend-integration-test validate check-deps help
 
 # Auto-detect latest available iPhone simulator; override with UDID: make ios-test SIM_ID=<udid>
 SIM_ID ?= $(shell xcrun simctl list devices available | grep -i iphone | tail -1 | grep -oEi '[0-9A-F-]{36}')
@@ -84,6 +84,22 @@ backend-test: ## Backend pytest + coverage (same env/flags as Backend CI test jo
 			--cov=app \
 			--cov-report=term-missing:skip-covered && \
 		uv run coverage report --skip-covered --show-missing
+
+backend-integration-test: ## Run backend integration tests against local Supabase (starts stack if needed)
+	@echo "── Backend integration tests ────────────────────────────────────"
+	@if ! supabase status 2>/dev/null | grep -q 'API URL'; then \
+		echo "Local Supabase stack not running — starting it now..."; \
+		supabase start; \
+	else \
+		echo "Local Supabase stack already running."; \
+	fi
+	@eval "$$(supabase status -o env | sed 's/="\(.*\)"/=\1/')" && \
+		cd backend && uv sync --frozen && \
+		ENVIRONMENT=ci LOG_JSON=false RATE_LIMIT_ENABLED=false \
+		SUPABASE_URL=$$API_URL \
+		SUPABASE_PUBLIC_ANON_KEY=$$ANON_KEY \
+		SUPABASE_SERVICE_ROLE_KEY=$$SERVICE_ROLE_KEY \
+		uv run pytest tests/integration/ -v -m integration --tb=short
 
 lint: ## Same linters as CI: backend (ruff + mypy via uv) + iOS SwiftLint
 	cd backend && uv sync --frozen && uv run ruff check . && uv run ruff format --check . && uv run mypy app
